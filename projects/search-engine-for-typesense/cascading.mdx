@@ -1,0 +1,97 @@
+---
+title: "Cascading"
+description: "Keep referencing collections consistent when a referenced document changes. Discovery, partial vs full reindex, usage, and instrumentation."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/indexer">Indexer</a>, <a href="/projects/search-engine-for-typesense/joins">Joins</a>, <a href="/projects/search-engine-for-typesense/observability">Observability</a>, <a href="/projects/search-engine-for-typesense/references-joins-deep-dive">References & JOINs — Deep dive</a>
+
+### Cascading updates for referenced collections
+
+Keep referencing collections consistent when a referenced document changes. This page covers discovery of references, partial vs full reindex, usage, and emitted instrumentation.
+
+#### Overview
+- <strong>Discovery</strong>: Build a reverse reference graph from Typesense live schemas (preferred) using field-level <code>reference</code> (e.g., <code>"authors.id"</code>). Falls back to compiled local schemas from SearchEngine models when Typesense is unavailable.
+- <strong>Scope</strong>: Single-hop only. Immediate cycles (A ↔ B) are detected and skipped.
+- <strong>Reindex</strong>: On document update, attempt a targeted partial reindex of referencing collections when safe; otherwise perform a full reindex of each referencing collection.
+
+```mermaid
+flowchart TD
+  U[Base#update(cascade: true)] --> T[Typesense partial update]
+  T --> C[SearchEngine::Cascade]
+  C --> G[Build reverse refs graph]
+  G -->|referencers| R1[Referrer collection 1]
+  G -->|referencers| R2[Referrer collection 2]
+  R1 -->|ActiveRecord + no Partitioner| P1[partial reindex by foreign_key]
+  R1 -->|else| F1[full reindex]
+  R2 -->|ActiveRecord + no Partitioner| P2[partial reindex by foreign_key]
+  R2 -->|else| F2[full reindex]
+```
+
+#### Reference discovery
+- From Typesense: <code>GET /collections</code> → for each <code>GET /collections/{name}</code>; inspect each field’s <code>reference</code> value.
+- Fallback: compile each registered model schema and use its <code>reference</code> annotations generated from <code>belongs_to :assoc</code> (stored as <code>"&lt;collection&gt;.&lt;foreign_key&gt;"</code>, or <code>;async</code> variant when enabled).
+
+Notes:
+- Only single-hop references are considered. Multi-hop is not supported.
+- Immediate cycles (e.g., A references B and B references A) are skipped to avoid ping-pong reindex.
+
+Manual targeted rebuild (when you opt into bi‑directional joins and still need a refresh):
+
+```ruby
+# Refresh referencers by foreign key (example keys)
+SearchEngine::Indexer.rebuild_partition!(
+  SearchEngine::Book,
+  partition: { author_id: [42] }
+)
+```
+
+#### Partial vs full reindex
+- Partial reindex is attempted only when both conditions hold:
+  - Referencing collection uses the ActiveRecord source adapter, and
+  - No custom Partitioner is configured for that collection.
+- Partial strategy: call `Indexer.rebuild_partition!(Referrer, partition: { foreign_key =&gt; ids })` so the ActiveRecord source applies <code>where(foreign_key: ids)</code>.
+- Full fallback:
+  - Triggered when partial is not eligible, or raises unexpectedly.
+  - Always used when <code>context: :full</code>.
+
+#### Partitioned referencers and parallelism
+- When a referencer collection defines partitioning via the index DSL (<code>partitions</code>, <code>partition_fetch</code>), cascade full reindex will honor <code>partition_max_parallel</code> and process partitions concurrently, mirroring full indexation behavior. If <code>partition_max_parallel &lt;= 1</code> or there is only one partition, processing remains sequential.
+
+#### Usage
+- Opt-in cascade on instance update:
+```ruby
+record.update(name: "New Name", cascade: true)
+```
+
+- Explicit API:
+```ruby
+# After updating an Author with id "42":
+SearchEngine::Cascade.cascade_reindex!(source: Author, ids: ["42"], context: :update)
+
+# After a full collection rebuild of Authors:
+SearchEngine::Cascade.cascade_reindex!(source: Author, ids: nil, context: :full)
+```
+
+Behavior:
+- <code>context: :update</code>: prefer partial reindex; fallback to full per referencer.
+- <code>context: :full</code>: always full reindex for all referencers.
+
+#### Instrumentation
+Emits <code>search_engine.cascade.run</code> via ActiveSupport::Notifications with keys:
+- <code>source_collection</code> (String)
+- <code>ids_count</code> (Integer)
+- <code>context</code> (<code>:update</code> | <code>:full</code>)
+- <code>targets_total</code> (Integer)
+- <code>partial_count</code>, <code>full_count</code> (Integers)
+- <code>skipped_unregistered</code> (Integer)
+- <code>skipped_cycles</code> (Array of pairs)
+- <code>outcomes</code> (Array): `{ collection, mode: :partial | :full | :skipped_unregistered | :skipped_cycle }`
+
+#### Caveats
+- Single-hop only; deeper paths are out of scope.
+- Partial reindex requires the ActiveRecord source and no Partitioner.
+- Cascade runs best-effort; errors are swallowed when triggered from <code>Base#update</code> to preserve update semantics.
+
+Backlinks: <a href="/projects/search-engine-for-typesense/schema">Schema</a> · <a href="/projects/search-engine-for-typesense/indexer">Indexer</a> · <a href="/projects/search-engine-for-typesense/joins">Joins</a> · <a href="/projects/search-engine-for-typesense/observability">Observability</a>
+
+

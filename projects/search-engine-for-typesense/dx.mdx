@@ -1,0 +1,71 @@
+---
+title: "DX"
+description: "Developer-experience helpers: to_params_json, to_curl, dry_run!, explain, generators, and console helpers."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/debugging">Debugging</a>, <a href="/projects/search-engine-for-typesense/troubleshooting#dx">Troubleshooting → DX</a>
+
+Developer‑experience helpers on <code>Relation</code> visualize compiled requests and enable a safe, zero‑I/O dry run.
+
+- <code>Relation#to_params_json(pretty: true)</code> — redacted JSON body after compile. Pretty output has stable key ordering for copy/paste and diffs.
+- <code>Relation#to_curl</code> — single‑line cURL with POST to the resolved endpoint, JSON body, and redacted API key.
+- <code>Relation#dry_run!</code> — compiles and validates without network I/O; returns `{ url:, body:, url_opts: }`.
+- <code>Relation#explain</code> — extended overview with grouping, joins, presets/curation, conflicts, correlation ID preview (when present), and predicted events.
+
+## Helpers & examples
+
+```ruby
+rel = SearchEngine::Book
+        .where(active: true)
+        .order(updated_at: :desc)
+        .select(:id, :name)
+        .page(2).per(20)
+
+rel.to_params_json
+# => "{\n  \"filter_by\": \"active:=***\", ... }"
+
+rel.to_curl
+# => "curl -X POST https://host/... -H 'Content-Type: application/json' -H 'X-TYPESENSE-API-KEY: ***' -d '{...}'"
+
+rel.dry_run!
+# => { url: "https://host:8108/collections/products/documents/search", body: "{...}", url_opts: { use_cache: true, cache_ttl: 60 } }
+
+puts rel.explain # shows NOT IN formatting for membership negation
+```
+
+## Event prediction (no emit)
+
+Use <code>rel.explain</code> to preview which events would fire without emitting them:
+
+```text
+Events that would fire: search_engine.compile → search_engine.joins.compile → search_engine.grouping.compile → search_engine.search
+```
+
+### Redaction policy
+
+- All helpers are pure and do not mutate the relation.
+- <code>dry_run!</code> validates and returns a redacted body; no HTTP requests are made.
+- Redaction follows observability rules, masking secrets and literals.
+
+## Generators & Console helpers
+
+Install and scaffold minimal models using Rails generators:
+
+```bash
+rails g search_engine:install
+rails g search_engine:model Product --collection products --attrs id:integer name:string
+```
+
+In <code>rails console</code>, use inline helpers: <code>SE.q("milk")</code>, `SE.ms { |m| m.add :books, SE.q("milk").per(5) }`.
+
+- <strong>Default model resolution</strong>: set <code>SearchEngine.config.default_console_model</code> (Class or String). If unset, the helper falls back to the single registered model; ambiguous cases raise with a hint.
+- <strong>Options</strong>: <code>SE.q</code> accepts <code>select:</code>, <code>per:</code>, <code>page:</code>, and <code>where:</code>. Any remaining options are forwarded to the relation via <code>options(...)</code>.
+
+Backlinks: <a href="/projects/search-engine-for-typesense/quickstart">Quickstart</a>, <a href="/projects/search-engine-for-typesense/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/multi-search">Multi‑search</a>, <a href="/projects/search-engine-for-typesense/observability">Observability</a>
+
+### Troubleshooting
+
+- <strong>No default model configured</strong>: Set <code>SearchEngine.config.default_console_model = 'SearchEngine::Book'</code> or ensure only one model is registered.
+- <strong>Unknown attribute type</strong>: Allowed types include <code>string</code>, <code>integer</code>, <code>float</code>, <code>boolean</code>, <code>datetime</code>, <code>time</code>, <code>datetime_string</code>, <code>time_string</code>, <code>json</code>. See <a href="/projects/search-engine-for-typesense/field-selection#guardrails-errors">Field selection → Guardrails</a> and <a href="/projects/search-engine-for-typesense/troubleshooting">Troubleshooting</a>.
+
+

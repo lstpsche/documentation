@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
+  "theme": "willow",
   "name": "Mint Starter Kit",
   "colors": {
     "primary": "#16A34A",
@@ -11,74 +11,104 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "SearchEngine for Typesense",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Overview",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "projects/search-engine-for-typesense/index",
+              "projects/search-engine-for-typesense/quickstart",
+              "projects/search-engine-for-typesense/installation",
+              "projects/search-engine-for-typesense/configuration",
+              "projects/search-engine-for-typesense/roadmap"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Guides",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "projects/search-engine-for-typesense/relation",
+              "projects/search-engine-for-typesense/query-dsl",
+              "projects/search-engine-for-typesense/joins",
+              "projects/search-engine-for-typesense/references-joins-deep-dive",
+              "projects/search-engine-for-typesense/joins-selection-grouping",
+              "projects/search-engine-for-typesense/field-selection",
+              "projects/search-engine-for-typesense/grouping",
+              "projects/search-engine-for-typesense/faceting",
+              "projects/search-engine-for-typesense/materializers",
+              "projects/search-engine-for-typesense/presets",
+              "projects/search-engine-for-typesense/curation",
+              "projects/search-engine-for-typesense/collections-graph",
+              "projects/search-engine-for-typesense/cascading",
+              "projects/search-engine-for-typesense/models",
+              "projects/search-engine-for-typesense/compiler",
+              "projects/search-engine-for-typesense/highlighting",
+              "projects/search-engine-for-typesense/hit-limits",
+              "projects/search-engine-for-typesense/synonyms-stopwords",
+              "projects/search-engine-for-typesense/cookbook-queries",
+              "projects/search-engine-for-typesense/deferred-typesense-features"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "API",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "projects/search-engine-for-typesense/client",
+              "projects/search-engine-for-typesense/relation-reference",
+              "projects/search-engine-for-typesense/schema",
+              "projects/search-engine-for-typesense/indexer",
+              "projects/search-engine-for-typesense/multi-search",
+              "projects/search-engine-for-typesense/multi-search-guide",
+              "projects/search-engine-for-typesense/deletion",
+              "projects/search-engine-for-typesense/active-record-syncable"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "CLI & DX",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "projects/search-engine-for-typesense/cli",
+              "projects/search-engine-for-typesense/dx",
+              "projects/search-engine-for-typesense/tuit"
+            ]
+          },
+          {
+            "group": "Operations & Testing",
+            "pages": [
+              "projects/search-engine-for-typesense/observability",
+              "projects/search-engine-for-typesense/observability-dx-testing",
+              "projects/search-engine-for-typesense/debugging",
+              "projects/search-engine-for-typesense/testing",
+              "projects/search-engine-for-typesense/troubleshooting",
+              "projects/search-engine-for-typesense/schema-indexer-e2e"
+            ]
+          },
+          {
+            "group": "Community",
+            "pages": [
+              "projects/search-engine-for-typesense/contributing",
+              "projects/search-engine-for-typesense/docs-style-guide"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
-          }
+        "tab": "AI Tools",
+        "pages": [
+          "ai-tools/cursor",
+          "ai-tools/claude-code",
+          "ai-tools/windsurf"
         ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "href": "https://github.com/lstpsche",
+          "icon": "github"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "LinkedIn",
+          "href": "https://www.linkedin.com/in/lstpsche",
+          "icon": "linkedin"
         }
       ]
     }
@@ -87,36 +117,22 @@
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
   },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
+  "navbar": {},
   "contextual": {
     "options": [
      "copy",
-     "view",
+     "mcp",
+     "cursor",
      "chatgpt",
      "claude",
      "perplexity",
-     "mcp",
-     "cursor",
      "vscode"
    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/lstpsche",
+      "linkedin": "https://www.linkedin.com/in/lstpsche/"
     }
   }
 }

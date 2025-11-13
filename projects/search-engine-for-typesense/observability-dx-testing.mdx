@@ -1,0 +1,62 @@
+---
+title: "Observability + DX + Testing"
+description: "How unified events, logging, DX helpers, and the stub client fit together for safe introspection and robust tests."
+---
+
+This page ties together Observability, DX helpers, and Testing patterns for a cohesive workflow.
+
+## Observability recap
+
+- Unified events via <code>ActiveSupport::Notifications</code>:
+  <code>search_engine.search</code>, <code>search_engine.multi_search</code>, `search_engine.schema.*`, `indexer.*`, and compile‑time summaries (joins/grouping/selection/facets/highlight/synonyms/geo/vector/hit limits).
+- Redaction policy ensures no secrets or raw filter literals are logged. Use <code>params_preview</code> and <code>filter_hash</code>.
+- Optional subscribers:
+  - <strong>LoggingSubscriber</strong> (<code>config.logging.mode = :compact|:json</code>)
+  - <strong>OpenTelemetry</strong> adapter (<code>config.opentelemetry.enabled = true</code>)
+
+See: <a href="/projects/search-engine-for-typesense/observability">Observability</a>
+
+## DX helpers
+
+- <code>to_params_json</code> — redacted JSON, stable keys
+- <code>to_curl</code> — one‑liner with redacted API key
+- <code>dry_run!</code> — compile only; returns `{ url:, body:, url_opts: }`
+- <code>explain</code> — extended overview (grouping, joins, presets/curation, conflicts, predicted events)
+
+See: <a href="/projects/search-engine-for-typesense/dx">DX</a>
+
+## Testing offline
+
+- Stub client: <code>SearchEngine::Test::StubClient</code>
+- Queue responses per verb and assert on captured calls (URL, redaction flags, redacted body)
+- Event assertions with RSpec or Minitest helpers
+
+See: <a href="/projects/search-engine-for-typesense/testing">Testing</a>
+
+## Putting it together
+
+```ruby
+rel = SearchEngine::Book.where(active: true).select(:id, :name).per(5)
+
+# DX preview (no I/O)
+rel.dry_run!
+puts rel.explain
+
+# Observability: subscribe in tests
+events = capture_events { rel.to_a }
+
+# Testing: stub and enqueue
+stub = SearchEngine.config.client
+stub.enqueue_response(:search, { 'hits' => [], 'found' => 0, 'out_of' => 0 })
+rel.to_a
+```
+
+## Troubleshooting
+
+- Missing events: enable subscriber/logging or OTel and wrap calls
+- Redaction gaps: use <code>params_preview</code>, never log raw bodies
+- DX helpers performing I/O: re‑check call site; helpers are pure
+
+Backlinks: <a href="/projects/search-engine-for-typesense/observability">Observability</a> · <a href="/projects/search-engine-for-typesense/dx">DX</a> · <a href="/projects/search-engine-for-typesense/testing">Testing</a>
+
+

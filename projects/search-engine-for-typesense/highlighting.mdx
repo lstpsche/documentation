@@ -1,0 +1,80 @@
+---
+title: "Highlighting"
+description: "Emphasize matched query terms via affix snippets or fully highlighted fields. Options, compiler mapping, and result helpers."
+---
+
+When you want to emphasize matched query terms, use highlighting. It supports concise affix snippets around matches or fully highlighted fields.
+
+## DSL usage
+
+Verbatim ticket example:
+
+```ruby
+rel = SearchEngine::Book
+  .highlight(fields: %i[name description], full_fields: %i[description], start_tag: "<em>", end_tag: "</em>", affix_tokens: 8, snippet_threshold: 30)
+```
+
+Variations:
+
+```ruby
+# Use <mark> tags and only snippet fields
+SearchEngine::Book.highlight(fields: %i[name], start_tag: "<mark>", end_tag: "</mark>")
+
+# Only full_fields (no affix snippets)
+SearchEngine::Book.highlight(fields: %i[name], full_fields: %i[description])
+```
+
+## Compiler mapping
+
+```mermaid
+flowchart LR
+  A[Relation.highlight opts] --> B[Normalize (HighlightPlan)]
+  B --> C[Params: highlight_* + snippet_threshold]
+  C --> D[Search request]
+  D --> E[Response: highlights per hit]
+  E --> F[Hit decorators: highlights & snippet_for]
+```
+
+Emitted Typesense params:
+- <code>highlight_fields</code>
+- <code>highlight_full_fields</code>
+- <code>highlight_affix_num_tokens</code>
+- <code>highlight_start_tag</code>
+- <code>highlight_end_tag</code>
+- <code>snippet_threshold</code>
+
+## Options and validation
+
+- <code>fields:</code> Array&lt;Symbol/String&gt; — required. At least one non‑blank field.
+- <code>full_fields:</code> Array&lt;Symbol/String&gt; — optional.
+- <code>start_tag</code>/<code>end_tag:</code> simple HTML‑like tokens such as <code>&lt;em&gt;</code>, <code>&lt;/em&gt;</code>, <code>&lt;mark&gt;</code>, <code>&lt;/mark&gt;</code>. Attributes are not allowed.
+- <code>affix_tokens</code>/<code>snippet_threshold:</code> non‑negative integers; strings of digits are coerced.
+
+On invalid values the API raises <code>SearchEngine::Errors::InvalidOption</code> with a helpful hint.
+
+See: <code>#options</code> in this page.
+
+## Result helpers
+
+Each hydrated hit gets two helpers:
+- <code>hit.highlights</code> → `Hash{ field_name => [ { value:, matched_tokens:, snippet: true/false } ] }`
+- <code>hit.snippet_for(:description, full: false)</code> → HTML safe string (Rails <code>SafeBuffer</code> when present)
+
+Safety:
+- Only your configured <code>start_tag</code>/<code>end_tag</code> are preserved. All other markup is escaped to prevent XSS.
+- If the server returns different tags, they are normalized to your configured tags.
+
+## Troubleshooting
+
+- Missing highlights: ensure <code>fields:</code> includes the attributes you search over and that Typesense has highlighting enabled for the collection.
+- Tags not applied: invalid tags are rejected; use simple tokens like <code>&lt;em&gt;</code> and <code>&lt;/em&gt;</code>.
+- Snippets too long/short: adjust <code>affix_tokens</code> and <code>snippet_threshold</code>.
+
+## Backlinks
+
+- See <a href="/projects/search-engine-for-typesense/dx">DX</a> for DX helpers (<code>to_params_json</code>, <code>dry_run!</code>, <code>explain</code>).
+- See <a href="/projects/search-engine-for-typesense/relation-reference">Relation Guide</a> and <a href="/projects/search-engine-for-typesense/cookbook-queries">Cookbook Queries</a> for composing DSL calls.
+- See <a href="/projects/search-engine-for-typesense/observability">Observability</a> for event names.
+- Related: <a href="/projects/search-engine-for-typesense/faceting">Faceting</a> if you combine facets and highlighting.
+
+

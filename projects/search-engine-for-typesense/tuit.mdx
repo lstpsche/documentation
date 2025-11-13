@@ -1,0 +1,61 @@
+---
+title: "TUIT — Terminal UI"
+description: "Interactive terminal UI to inspect and manage Typesense collections using SearchEngine models."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/cli">CLI</a>, <a href="/projects/search-engine-for-typesense/troubleshooting#cli">Troubleshooting</a>
+
+Interactive, menu-driven terminal UI to inspect and manage Typesense collections with SearchEngine models.
+
+### Launch
+
+```bash
+bundle exec tuit
+```
+
+TUIT auto-loads your Rails app and host <code>app/search_engine</code> models to resolve logical collections.
+
+### Main menu
+
+- Collections
+- API Keys
+- Settings
+- Quit
+
+### Collections
+
+- Lists resolved collections as <code>SearchEngine::Model (logical)</code> with total document count.
+- Unresolved physical collections appear as raw names.
+
+Selecting a resolved collection shows:
+
+- Physical collections: lists all matching physical collections for the logical alias
+- Drop collection: drops active physical and alias
+- (Re)Index: full reindex (shown when not partitioned)
+- (Re)Index full collection / (Re)Index partition: partitioned workflows
+- Back: returns one level up
+
+Selecting an unresolved physical collection shows:
+
+- View schema
+- Drop physical collection
+- Back
+
+Navigation rule: Back always goes one level up. After dropping a collection (logical or physical), the parent menu refreshes immediately.
+
+### Partition input
+
+- Single value or comma-separated list (numeric parsed as integers, others as strings), e.g. <code>42</code> or <code>foo,bar,42</code>.
+
+### Tips
+
+- If a model doesn’t appear resolved, ensure it inherits from <code>SearchEngine::Base</code> and defines <code>collection 'logical'</code>.
+- TUIT prefers alias target first but lists all physicals that normalize to the logical name.
+
+### Safety
+
+- Drop actions require confirmation.
+
+Backlinks: <a href="/projects/search-engine-for-typesense/cli">CLI</a>, <a href="/projects/search-engine-for-typesense/troubleshooting#cli">Troubleshooting</a>
+
+

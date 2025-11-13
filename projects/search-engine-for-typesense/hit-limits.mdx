@@ -1,0 +1,55 @@
+---
+title: "Hit Limits"
+description: "Cap backend work early and validate total hits after fetch. DSL, compiler mapping, and DX surfaces."
+---
+
+This page explains how to cap or validate the number of matching hits for a query.
+
+- Early limit: proactively cap work at the backend when supported.
+- Post‑fetch validation: assert a hard upper bound on total hits and raise when exceeded.
+
+## DSL usage
+
+Verbatim:
+
+```ruby
+SearchEngine::Book.limit_hits(1_000).validate_hits!(max: 10_000)
+```
+
+Common combinations:
+- Apply only an early limit to avoid over‑fetching when you only need a small page.
+- Add a post‑fetch validator to guard against unexpectedly broad queries in production.
+
+## Compiler mapping
+
+- Early limit: The Typesense API has no canonical total‑hits cap parameter. As a conservative fallback, the compiler lowers <code>per_page</code> when it exceeds the early limit. This avoids over‑fetching on the first page but does not emulate a hard cap across pages.
+- Validation note: A non‑transmitted internal note is attached for DX so <code>dry_run!</code> and <code>explain</code> can show that a validator will run.
+
+## Materializers
+
+The validator runs once per materialization and only after the first response is available, using the backend’s total hits field (<code>found</code>). It applies to:
+- <code>to_a</code>, <code>each</code>, <code>first</code>, <code>last</code>, <code>take</code>, <code>pluck</code>, <code>ids</code>
+- <code>count</code>, <code>exists?</code> (via a minimal metadata fetch)
+
+For multi‑search, each search is validated independently.
+
+## Troubleshooting
+
+- Repeated errors: Narrow your filters or increase <code>validate_hits!(max:)</code>.
+- Multi‑search failures: Treat offending searches independently; raise or log details with labels where available.
+- <code>per</code> lower than expected: This is the conservative <code>per_page</code> adjustment from <code>limit_hits(n)</code>; increase your early limit if appropriate.
+
+## DX surfaces
+
+- <code>dry_run!</code> shows the compiled body with any <code>per_page</code> adjustment and notes about a pending validator.
+- <code>explain</code> summarizes early limit, per adjustment, and the validator threshold.
+
+## Backlinks
+
+- <a href="/projects/search-engine-for-typesense/relation-reference">Relation Guide</a>
+- <a href="/projects/search-engine-for-typesense/dx">DX</a>
+- <a href="/projects/search-engine-for-typesense/materializers">Materializers</a>
+- <a href="/projects/search-engine-for-typesense/observability">Observability</a>
+- <a href="/projects/search-engine-for-typesense/troubleshooting">Troubleshooting</a>
+
+
