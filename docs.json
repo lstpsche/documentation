@@ -136,7 +136,7 @@
       {
         "header": "Resources",
         "items": [
-          { "label": "Search Engine for Typesense", "href": "https://github.com/lstpsche/search-engine-for-typesense" }
+          { "label": "Search Engine gem", "href": "https://github.com/lstpsche/search-engine-for-typesense" }
         ]
       }
     ]
