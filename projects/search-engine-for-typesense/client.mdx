@@ -110,6 +110,7 @@ See <code>lib/search_engine/errors.rb</code> for details.
 ### Collection Management
 
 - <code>create_collection(schema)</code>: Create a physical collection.
+- <code>update_collection(name, schema)</code>: PATCH an existing collection (add/drop fields) without reindexing when Typesense deems the change compatible.
 - <code>delete_collection(name, timeout_ms: nil)</code>: Delete a collection.
 - <code>retrieve_collection_schema(name)</code>: Fetch schema for a physical collection.
 - <code>list_collections</code>: List all collections.

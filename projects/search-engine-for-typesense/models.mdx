@@ -76,6 +76,8 @@ Rules and behavior:
 - <code>attribute :id, ...</code> is invalid and raises. Use <code>identify_by</code>.
 - Any <code>id</code> returned from <code>index -> map</code> is ignored.
 - Inspect output renders <code>id</code> first regardless of whether it was declared.
+- **Precedence order**: When creating/upserting documents, the id is resolved as: (1) explicit <code>:id</code> attribute provided, (2) <code>identify_by</code> strategy result, (3) <code>record.id.to_s</code> fallback.
+- **String coercion**: All IDs are coerced to strings internally (Typesense requirement). The gem handles this automatically.
 
 ### Creating documents
 

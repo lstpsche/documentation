@@ -1,13 +1,13 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "willow",
-  "name": "lstpsche Docs",
+  "name": "lstpsche docs",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
     "dark": "#15803D"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/logo/logo.jpeg",
   "navigation": {
     "tabs": [
       {
@@ -92,51 +92,27 @@
       {
         "tab": "AI Tools",
         "pages": [
-          "ai-tools/cursor",
-          "ai-tools/claude-code",
-          "ai-tools/windsurf"
+          "ai-tools/mcp-setup"
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "GitHub",
-          "href": "https://github.com/lstpsche",
-          "icon": "github"
-        },
-        {
-          "anchor": "LinkedIn",
-          "href": "https://www.linkedin.com/in/lstpsche",
-          "icon": "linkedin"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    ]
   },
   "navbar": {
     "links": [
       {
-        "label": "GitHub",
+        "label": "My GitHub",
         "icon": "github",
         "href": "https://github.com/lstpsche"
       },
       {
-        "label": "LinkedIn",
+        "label": "My LinkedIn",
         "icon": "linkedin",
         "href": "https://www.linkedin.com/in/lstpsche"
       }
-    ],
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/lstpsche/search-engine-for-typesense"
-    }
+    ]
   },
   "search": {
-    "prompt": "Search lstpsche docs..."
+    "prompt": "Search the docs..."
   },
   "seo": {
     "indexing": "all"
@@ -147,9 +123,8 @@
      "mcp",
      "cursor",
      "chatgpt",
-     "claude",
      "perplexity",
-     "vscode"
+     "claude"
    ]
   },
   "footer": {
@@ -161,8 +136,6 @@
       {
         "header": "Resources",
         "items": [
-          { "label": "GitHub", "href": "https://github.com/lstpsche" },
-          { "label": "LinkedIn", "href": "https://www.linkedin.com/in/lstpsche" },
           { "label": "Search Engine for Typesense", "href": "https://github.com/lstpsche/search-engine-for-typesense" }
         ]
       }

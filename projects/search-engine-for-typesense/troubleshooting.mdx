@@ -107,4 +107,25 @@ Related: <a href="/projects/search-engine-for-typesense/observability">Observabi
   - Ensure you declared <code>stale</code> rules inside <code>index</code>; otherwise cleanup logs a skip and returns <code>0</code>
   - Remember rules are OR‑ed; verify at least one resolves to a non‑empty filter for the given partition
 
+## Error Reference
+
+The gem provides a structured error hierarchy under `SearchEngine::Errors`.
+
+| Error | Description | Action |
+|---|---|---|
+| `Timeout` | Request exceeded `timeout_ms`. | Check network or increase timeout. |
+| `Connection` | DNS/Socket failure. | Check host availability. |
+| `Api` | Non-2xx response from Typesense. | Check `error.status` and `error.body`. |
+| `InvalidParams` | Missing or invalid inputs. | Fix arguments provided to method. |
+| `InvalidField` | Field not in schema (and strict mode on). | Add field to schema or disable `strict_unknown_keys`. |
+| `UnknownField` | Field referenced in selection not declared on model. | Add attribute declaration or fix typo. |
+| `InvalidOperator` | Operator not recognized by query parser. | Use supported operators (see Query DSL). |
+| `InvalidType` | Value cannot be coerced to declared type. | Fix value type or enable coercions. |
+| `InvalidSelection` | Materializer requests fields not permitted by selection. | Adjust relation's `select`/`exclude` or materializer. |
+| `MissingField` | Hydration missing required field. | Ensure API returns field or mark optional. |
+| `ConflictingSelection` | Selection inputs are malformed or ambiguous. | Normalize selection inputs. |
+| `InvalidGroup` | Grouping DSL used with invalid inputs. | Fix field names, limits, or missing_values. |
+| `UnsupportedGroupField` | Grouping references joined/path fields. | Use base fields only for grouping. |
+| `HitLimitExceeded` | Result count > `max` validation. | Narrow query or increase limit. |
+
 

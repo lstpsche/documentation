@@ -520,6 +520,7 @@ end
 ```
 
 - <strong>What it does:</strong> routes per-partition rebuilds either synchronously (inline) or via <code>ActiveJob</code>.
+- <strong>Note:</strong> This setting controls <code>SearchEngine::Indexer</code> logic (used by <code>rebuild_partition!</code>, <code>index_collection</code> flow). It <strong>does not</strong> affect <code>ActiveRecordSyncable</code> callbacks, which are always inline.
 - <strong>API:</strong> `SearchEngine::Dispatcher.dispatch!(SearchEngine::Book, partition: key, into: nil, mode: nil, queue: nil, metadata: {})`
   - Returns an object describing the action: for ActiveJob `{ mode: :active_job, job_id, queue, collection, partition, into }`; for inline `{ mode: :inline, collection, partition, into, indexer_summary, duration_ms }`.
 - <strong>Mode resolution:</strong> <code>mode || SearchEngine.config.indexer.dispatch</code> with a fallback to <code>:inline</code> if ActiveJob is unavailable.

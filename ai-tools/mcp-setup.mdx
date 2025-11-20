@@ -1,0 +1,125 @@
+---
+title: "Connect to AI Tools"
+description: "Access documentation directly in your IDE and AI tools via MCP"
+icon: "network-wired"
+---
+
+The Model Context Protocol (MCP) enables AI assistants to access this documentation in real-time. By connecting this documentation as an MCP server, you ensure that tools like Cursor, Claude, and Windsurf have access to the latest guides and API references.
+
+<Card title="MCP Server URL" icon="link">
+  The MCP server is available at:
+
+  ```
+  https://nikita-shkoda.mintlify.app/mcp
+  ```
+</Card>
+
+## Connection Guide
+
+<Tabs>
+  <Tab title="Cursor">
+    Open any docs page and use the contextual menu -> "Connect to Cursor".
+
+    Alternatively, you can setup the MCP server connection manually:
+
+    <Steps>
+      <Step title="Open Cursor Settings">
+        Open Cursor Settings from the top right corner of the editor window, or pressing <kbd>⇧ ⌘ J</kbd> (Mac) or its equivalent on Windows.
+      </Step>
+      <Step title="Go to Tools & MCP" />
+      <Step title="Open MCP servers settings">
+        Scroll down to the end of the MCP servers list, and click "+ New MCP Server".
+      </Step>
+      <Step title="Add server configuration">
+        ```json
+        {
+          "mcpServers": {
+            "lstpsche docs": {
+              "name": "lstpsche Docs",
+              "url": "https://nikita-shkoda.mintlify.app/mcp"
+            }
+          }
+        }
+        ```
+      </Step>
+      <Step title="Save the mcp.json file" />
+    </Steps>
+  </Tab>
+  <Tab title="Windsurf">
+    <Steps>
+      <Step title="Open Cascade tools settings">
+        Open the **Cascade** panel, then click the tools plug icon and choose **Manage tools**.
+      </Step>
+      <Step title="Open raw MCP config">
+        In the tools panel, click **View raw config** to edit the underlying JSON configuration.
+      </Step>
+      <Step title="Add the lstpsche Docs MCP server">
+        ```json
+        {
+          "mcpServers": {
+            "lstpsche-docs": {
+              "type": "sse",
+              "url": "https://nikita-shkoda.mintlify.app/mcp"
+            }
+          }
+        }
+        ```
+        If you already have other `mcpServers` defined, just add the `lstpsche-docs` object alongside them.
+      </Step>
+      <Step title="Save and reload tools">
+        Save the config, then reload tools (or restart Windsurf) so Cascade can connect to the server.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Claude Code">
+    <Steps>
+      <Step title="Install the Claude CLI">
+        Install the official <code>claude</code> CLI from Anthropic (see their docs for the latest installation instructions).
+      </Step>
+      <Step title="Register the lstpsche Docs MCP server">
+        Run this command in your terminal:
+        ```bash
+        claude mcp add --transport http "lstpsche Docs" https://nikita-shkoda.mintlify.app/mcp
+        ```
+        This tells Claude Code to treat these docs as an HTTP MCP server.
+      </Step>
+      <Step title="Verify the server is available">
+        List configured MCP servers:
+        ```bash
+        claude mcp list
+        ```
+        and check that <code>lstpsche Docs</code> appears in the output.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Perplexity">
+    <Info>
+      **Perplexity** does not currently expose a generic MCP client, so it cannot connect directly to the full `/mcp` server.
+    </Info>
+
+    <Steps>
+      <Step title="Use the contextual menu">
+        From any docs page, use the contextual menu and choose <strong>Open in Perplexity</strong> (if enabled in <code>docs.json</code>).
+        This opens a Perplexity conversation with the current page content as context.
+      </Step>
+      <Step title="Ask follow-up questions">
+        Ask questions in Perplexity about what you see on the page; it will answer based on that provided context.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="ChatGPT">
+    <Info>
+      **ChatGPT** does not yet provide a general-purpose MCP client, so it cannot connect directly to the full `/mcp` server.
+    </Info>
+
+    <Steps>
+      <Step title="Open the current page in ChatGPT">
+        From any docs page, use the contextual menu and choose <strong>Open in ChatGPT</strong> (if enabled in <code>docs.json</code>).
+        This opens a ChatGPT conversation with the page content pre-loaded as context.
+      </Step>
+      <Step title="Provide extra context when needed">
+        For deeper questions, paste additional snippets or links from the docs into the same ChatGPT thread so it can reason over more context.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>

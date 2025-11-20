@@ -19,10 +19,19 @@ flowchart LR
 
 - <code>SearchEngine::Schema.compile(klass)</code> → returns a Typesense-compatible schema hash built from the DSL. Pure and deterministic (no network I/O).
 - <code>SearchEngine::Schema.diff(klass)</code> → resolves alias → physical, fetches the live schema, and returns a structured diff plus a compact human summary.
-- <code>SearchEngine::Schema.apply!(klass)</code> → create new physical, reindex, atomically swap alias, enforce retention; returns `{ logical, new_physical, previous_physical, alias_target, dropped_physicals }`.
+- <code>SearchEngine::Schema.update!(klass)</code> → attempts an in-place schema patch (Typesense <code>PATCH /collections/:name</code>) when the diff only contains field additions/drops; returns <code>true</code> when the schema is already in sync or successfully patched.
+- <code>SearchEngine::Schema.apply!(klass, force_rebuild: false)</code> → blue/green lifecycle (create new physical, reindex, swap alias, retention). By default it first tries <code>update!</code> and only falls back to blue/green when incompatible changes are detected. Returns `{ logical, new_physical, previous_physical, alias_target, dropped_physicals, action: :update|:rebuild }`.
 - <code>SearchEngine::Schema.rollback(klass)</code> → swap alias back to previous retained physical; returns `{ logical, new_target, previous_target }`.
 
 Both methods are documented with YARD. Keys are returned as symbols; empty/nil values are omitted. The returned schema is deeply frozen.
+
+## In-place schema updates (Typesense v29+)
+
+- <code>SearchEngine::Schema.update!(klass, client: ...)</code> inspects the live diff and issues a <code>PATCH /collections/:name</code> when the changes are limited to field additions or drops. Type changes, reference changes, or collection-level option differences automatically return <code>false</code>, signalling that a full blue/green rebuild is required.
+- <code>klass.update_collection!</code> (available on every <code>SearchEngine::Base</code> subclass) is a convenience wrapper that logs console guidance and delegates to <code>Schema.update!</code>.
+- <code>Schema.apply!(force_rebuild: false)</code> now attempts an in-place update first. Pass <code>force_rebuild: true</code> when you explicitly need to skip PATCH (for example, when you want a new physical even if only field additions are pending).
+
+CLI tasks such as <code>bin/rails search_engine:schema:apply[Collection]</code> inherit the same behavior because they call <code>Schema.apply!</code> under the hood.
 
 ## Type mapping (DSL → Typesense)
 
@@ -33,6 +42,7 @@ Both methods are documented with YARD. Keys are returned as symbols; empty/nil v
 - <strong>:time / :datetime</strong> → <code>int64</code> (epoch seconds)
 - <strong>:time_string / :datetime_string</strong> → <code>string</code> (ISO8601 timestamps)
 - Arrays like <code>[:string]</code> → <code>string[]</code>
+- <strong>:auto</strong> (regex-style field names such as `".*_facet"`) → `auto`; enables Typesense auto schema detection and wildcard ingestion. The DSL enforces that `:auto` can only be used when the attribute name looks like a regex (contains metacharacters such as `*`, `.`, etc.).
 
 ### Array empty filtering (hidden fields)
 
@@ -63,10 +73,11 @@ Joins:
 
 ### System field: `doc_updated_at`
 
-- Always present on every collection.
+- Always present on every collection. **Cannot be disabled**—the gem automatically injects this field during document creation/upsert.
 - Stored in Typesense as <code>int64</code> (epoch seconds). If declared in the model DSL, its type will be coerced to <code>int64</code> at compile time to ensure consistency.
 - On hydration and console output, it is converted to a <code>Time</code> in the current timezone (uses <code>Time.zone</code> when available, falling back to <code>Time</code>).
 - When using instance <code>attributes</code>, <code>:doc_updated_at</code> is returned as a <code>Time</code> object. Unknown fields remain available under <code>:unknown_attributes</code>.
+- **Typesense limitation**: This field is required by Typesense for internal tracking. The gem enforces its presence to maintain compatibility.
 
 ## Collection options
 

@@ -93,6 +93,116 @@ end
 
 Defaults to `Rails.logger` when available; otherwise a `$stdout` logger at INFO level. You may supply any object responding to `#info`, `#warn`, and `#error`.
 
+## Advanced Configuration
+
+Beyond the top-level keys, several nested configurations control specific subsystems. These can be set in the `configure` block.
+
+### Indexer
+Settings for bulk import and background processing.
+
+```ruby
+SearchEngine.configure do |c|
+  c.indexer.batch_size = 2000 # default
+  c.indexer.gzip = true       # compress payloads (default: false)
+  c.indexer.dispatch = :active_job # or :inline (default: :active_job if available)
+  c.indexer.queue_name = 'search_index'
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `batch_size` | 2000 | Documents per batch during bulk operations |
+| `timeout_ms` | `nil` | Optional override for import read timeout (ms) |
+| `retries` | `{ attempts: 3, base: 0.5, max: 5.0, jitter_fraction: 0.2 }` | Retry policy for batch imports |
+| `gzip` | `false` | Compress JSONL bodies (requires Typesense support) |
+| `dispatch` | `:active_job` | Controls `SearchEngine::Indexer` (rebuild/bulk) behavior. **Does not apply to ActiveRecordSyncable** (which is always inline). |
+| `queue_name` | `"search_index"` | Queue for ActiveJob |
+
+### Sources
+Settings for data ingestion adapters.
+
+```ruby
+SearchEngine.configure do |c|
+  # ActiveRecord adapter
+  c.sources.active_record.batch_size = 2000      # default: 2000
+  c.sources.active_record.readonly = true        # avoid dirty tracking (default: true)
+  c.sources.active_record.use_transaction = false # wrap in read-only transaction (default: false)
+
+  # SQL adapter
+  c.sources.sql.fetch_size = 5000                # server-side cursor batch (default: 2000)
+  c.sources.sql.statement_timeout_ms = nil       # optional per-statement timeout
+  c.sources.sql.row_shape = :auto                # :auto or :hash (default: :auto)
+
+  # Lambda adapter
+  c.sources.lambda.max_batch_size_hint = nil     # validation/metrics hint only
+end
+```
+
+| Adapter | Field | Default | Notes |
+|---|---|---|---|
+| `active_record` | `batch_size` | 2000 | ORM batching size |
+| `active_record` | `readonly` | `true` | Mark relations as readonly |
+| `active_record` | `use_transaction` | `false` | Wrap fetching in read-only transaction |
+| `sql` | `fetch_size` | 2000 | Server-side cursor batch size |
+| `sql` | `statement_timeout_ms` | `nil` | Optional per-statement timeout |
+| `sql` | `row_shape` | `:auto` | Row shape preference (`:auto` or `:hash`) |
+| `lambda` | `max_batch_size_hint` | `nil` | Validation/metrics hint only |
+
+### Mapper
+Settings for attribute mapping and coercions.
+
+```ruby
+SearchEngine.configure do |c|
+  c.mapper.strict_unknown_keys = true # raise on extra fields (default: false)
+  c.mapper.coercions = { enabled: true, rules: {} } # enable type coercions
+  c.mapper.max_error_samples = 5 # max error samples in reports (default: 5)
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `strict_unknown_keys` | `false` | When `true`, extra fields raise `InvalidField` |
+| `coercions` | `{ enabled: false, rules: {} }` | Type coercion settings (safe integer/float/bool only) |
+| `max_error_samples` | 5 | Maximum error samples included in batch reports |
+
+### Partitioning
+Settings for partitioned indexing and hooks.
+
+```ruby
+SearchEngine.configure do |c|
+  c.partitioning.default_into_resolver = nil # optional proc to resolve physical collection
+  c.partitioning.before_hook_timeout_ms = nil # timeout for before_partition hooks
+  c.partitioning.after_hook_timeout_ms = nil  # timeout for after_partition hooks
+  c.partitioning.max_error_samples = 5        # max error samples in payloads
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `default_into_resolver` | `nil` | Optional Proc to resolve default physical collection name |
+| `before_hook_timeout_ms` | `nil` | Timeout for `before_partition` hooks (ms) |
+| `after_hook_timeout_ms` | `nil` | Timeout for `after_partition` hooks (ms) |
+| `max_error_samples` | 5 | Maximum error samples in hook payloads |
+
+### Stale Deletes
+Settings for stale document cleanup operations.
+
+```ruby
+SearchEngine.configure do |c|
+  c.stale_deletes.enabled = true           # global kill switch (default: true)
+  c.stale_deletes.strict_mode = false     # block suspicious filters (default: false)
+  c.stale_deletes.timeout_ms = nil        # optional timeout for delete requests
+  c.stale_deletes.estimation_enabled = false # enable found estimation via search
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `enabled` | `true` | Global kill switch for stale delete operations |
+| `strict_mode` | `false` | When `true`, blocks suspicious catch-all filters |
+| `timeout_ms` | `nil` | Optional timeout for delete requests (ms) |
+| `estimation_enabled` | `false` | Enable found estimation via search before delete |
+
 ## Validation & warnings
 
 Calling `SearchEngine.configure { ... }` validates obvious misconfigurations (bad protocol, negative timeouts, etc.). At boot, the engine logs a one-time warning if `api_key` or `default_query_by` are missing; secrets are not printed.

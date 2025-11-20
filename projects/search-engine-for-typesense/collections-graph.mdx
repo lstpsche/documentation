@@ -3,11 +3,9 @@ title: "Collections Graph"
 description: "Render a live graph of your Typesense collections and their interconnections (Unicode or ASCII), plus Mermaid output for docs."
 ---
 
-Related: <a href="/projects/search-engine-for-typesense/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/indexer">Indexer</a>, <a href="/projects/search-engine-for-typesense/joins">Joins</a>, <a href="/projects/search-engine-for-typesense/dx">DX</a>
+## Overview
 
 Render a live graph of your Typesense collections and their interconnections directly in the terminal, using Unicode box‑drawing by default with an ASCII fallback.
-
-## Overview
 
 - Discovers collections and references from Typesense live schemas (fallback to local registry).
 - Builds a forward graph (from referrer → referenced collection).
@@ -37,11 +35,11 @@ SearchEngine.collections_graph(style: :ascii)                # ASCII only
 Collections Graph (nodes: N, edges: M)
 
 ┌──────────┐                          ┌─────────┐
-│ products │  ── via brand_id → id ─▶ │ brands  │
+│ products │  ── via brand_id → id ── │ brands  │
 └──────────┘                          └─────────┘
 
 ┌──────────┐                                ┌────────────┐
-│ products │  ── via promotion_ids → id ─▶  │ promotions │
+│ products │  ── via promotion_ids → id ──  │ promotions │
 └──────────┘                                └────────────┘
 
 Isolated: …
@@ -83,9 +81,33 @@ mmdc -i collections.mmd -o collections.png
 
 ## See also
 
-- <a href="/projects/search-engine-for-typesense/schema">Schema</a>
-- <a href="/projects/search-engine-for-typesense/indexer">Indexer</a>
-- <a href="/projects/search-engine-for-typesense/joins">Joins</a>
-- <a href="/projects/search-engine-for-typesense/dx">DX</a>
-
-
+<Columns cols={2}>
+  <Card
+    title="Schema"
+    icon="brackets-curly"
+    href="/projects/search-engine-for-typesense/schema"
+  >
+    Compile model → Typesense schema and manage lifecycle
+  </Card>
+  <Card
+    title="Indexer"
+    icon="cloud-arrow-up"
+    href="/projects/search-engine-for-typesense/indexer"
+  >
+    Index collections and documents efficiently
+  </Card>
+  <Card
+    title="Joins"
+    icon="shuffle"
+    href="/projects/search-engine-for-typesense/joins"
+  >
+    Related collections and reference/association features
+  </Card>
+  <Card
+    title="DX"
+    icon="sparkles"
+    href="/projects/search-engine-for-typesense/dx"
+  >
+    Developer experience tools and CLI
+  </Card>
+</Columns>

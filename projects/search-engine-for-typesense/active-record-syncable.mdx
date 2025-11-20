@@ -88,6 +88,38 @@ Book.first.sync_search_engine_record
 # => 1
 ```
 
+### Performance & Async
+
+The default `after_create/update/destroy` callbacks execute **synchronously** (inline) within the request cycle (and often within the DB transaction).
+
+- **Configuration Ignored**: The `SearchEngine.config.indexer.dispatch` setting (`:active_job` etc.) **does not apply** here. That setting controls bulk rebuilds only.
+- **For High Throughput**: If you need background processing to avoid blocking user requests, disable the concern's auto-sync and manually enqueue a job.
+
+```ruby
+class Product < ApplicationRecord
+  # Disable auto-sync
+  include SearchEngine::ActiveRecordSyncable
+  search_engine_syncable on: []
+
+  after_commit :enqueue_search_update, on: %i[create update destroy]
+
+  def enqueue_search_update
+    SearchIndexJob.perform_later(self.class.name, id)
+  end
+end
+
+# app/jobs/search_index_job.rb
+class SearchIndexJob < ApplicationJob
+  def perform(class_name, id)
+    record = class_name.constantize.find_by(id: id)
+    return unless record
+
+    # Manual sync
+    record.sync_search_engine_record
+  end
+end
+```
+
 ### Callbacks timing: after_* vs after_commit
 
 - Uses <code>after_create</code>/<code>after_update</code>/<code>after_destroy</code> by default for immediacy.
