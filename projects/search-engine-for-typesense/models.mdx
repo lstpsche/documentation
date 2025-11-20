@@ -99,6 +99,23 @@ Notes:
 - <code>:id</code> may be provided explicitly; otherwise it is computed via <code>identify_by</code>. If absent, Typesense may generate one.
 - By default, targets the alias (logical) collection; pass <code>into: "physical_name"</code> to override.
 
+### Updating documents
+
+Use <code>record.update(attrs)</code> to partially update fields of a hydrated record in Typesense.
+
+```ruby
+book = SearchEngine::Book.find("978-1234567890")
+book.update(title: "New Title", price: 19.99)
+# => 1
+```
+
+Notes:
+
+- Updates are partial; only provided fields are sent.
+- Requires the record to have an <code>id</code> (hydrated or computable).
+- Returns <code>1</code> on success, <code>0</code> on failure (failures are logged).
+- Accepts <code>into:</code>, <code>partition:</code>, <code>timeout_ms:</code>, and <code>cascade:</code> options.
+
 ### Mapping source data to model instances (`.from`)
 
 Use <code>Model.from(data, mode: :instance)</code> to map source data (ActiveRecord instances or SQL results) onto the model's schema and return hydrated instances or hashes. This uses the same mapping logic defined in your <code>index</code> DSL but does not make any Typesense API calls.
@@ -417,5 +434,3 @@ nested :prices,
 When the base is <code>:object</code>, nested subfield types are scalar (e.g., <code>:float</code>). When the base is <code>[:object]</code>, nested subfield types are arrays (e.g., <code>[:float]</code>).
 
 Backlinks: <a href="/projects/search-engine-for-typesense/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/field-selection">Field Selection</a>, <a href="/projects/search-engine-for-typesense/indexer">Indexer</a>
-
-

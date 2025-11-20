@@ -105,8 +105,46 @@ See <code>lib/search_engine/errors.rb</code> for details.
 - <strong>Timeout / Connection</strong>: Check host/port/protocol and network reachability.
 - <strong>API errors</strong>: Inspect <code>status</code> and server body. 4xx are not retried; 5xx/429 may be transient.
 
+## API Reference
+
+### Collection Management
+
+- <code>create_collection(schema)</code>: Create a physical collection.
+- <code>delete_collection(name, timeout_ms: nil)</code>: Delete a collection.
+- <code>retrieve_collection_schema(name)</code>: Fetch schema for a physical collection.
+- <code>list_collections</code>: List all collections.
+- <code>upsert_alias(alias, physical)</code>: Point an alias to a physical collection.
+- <code>resolve_alias(alias)</code>: Get the physical name for an alias.
+
+### Document Operations
+
+- <code>create_document(collection:, document:)</code>: Create a single document.
+- <code>retrieve_document(collection:, id:)</code>: Fetch a document by ID.
+- <code>update_document(collection:, id:, fields:)</code>: Partially update a document.
+- <code>delete_document(collection:, id:)</code>: Delete a document by ID.
+- <code>import_documents(collection:, jsonl:, action: :upsert)</code>: Bulk import.
+- <code>delete_documents_by_filter(collection:, filter_by:)</code>: Delete by query.
+- <code>update_documents_by_filter(collection:, filter_by:, fields:)</code>: Update by query.
+
+### Server Operations
+
+- <code>health</code>: Check server health.
+- <code>metrics</code>: Retrieve metrics (JSON).
+- <code>stats</code>: Retrieve stats (JSON).
+- <code>list_api_keys</code>: List configured API keys.
+- <code>clear_cache</code>: Clear server-side cache.
+
+### Synonyms & Stopwords
+
+- <code>synonyms_upsert(collection:, id:, terms:)</code>
+- <code>synonyms_list(collection:)</code>
+- <code>synonyms_get(collection:, id:)</code>
+- <code>synonyms_delete(collection:, id:)</code>
+- <code>stopwords_upsert(collection:, id:, terms:)</code>
+- <code>stopwords_list(collection:)</code>
+- <code>stopwords_get(collection:, id:)</code>
+- <code>stopwords_delete(collection:, id:)</code>
+
 Backlinks: <a href="/projects/search-engine-for-typesense/index">Home</a>
 
 See <a href="/projects/search-engine-for-typesense/observability">Observability</a> for emitted events and compact logging.
-
-

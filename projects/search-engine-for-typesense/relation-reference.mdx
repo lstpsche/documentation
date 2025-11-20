@@ -83,6 +83,26 @@ See: <a href="/projects/search-engine-for-typesense/grouping">Grouping</a>, <a h
 
 [Back to top ⤴](#relation-guide)
 
+## Advanced chaining & options
+
+Fine-tune the request with low-level controls:
+
+- <strong>search(q)</strong>: set the query string (default <code>"*"</code>).
+- <strong>limit(n) / offset(n)</strong>: set strict limit/offset (alternative to <code>page</code>/<code>per</code>).
+- <strong>cache(bool)</strong>: toggle <code>use_cache</code> for this request.
+- <strong>use_synonyms(bool)</strong>: toggle <code>use_synonyms</code>.
+- <strong>use_stopwords(bool)</strong>: toggle <code>use_stopwords</code> (maps to <code>remove_stop_words</code>).
+- <strong>options(hash)</strong>: shallow-merge arbitrary options into the request (e.g. <code>options(prioritize_exact_match: true)</code>).
+- <strong>unscope(*parts)</strong>: remove state pieces (e.g. <code>unscope(:where, :order)</code>).
+
+```ruby
+SearchEngine::Book
+  .search("potter")
+  .limit(5)
+  .cache(false)
+  .options(prioritize_exact_match: false)
+```
+
 ## Joins & presets (orientation)
 
 - <strong>Joins</strong>: Declare associations on the model, apply with <code>.joins(:assoc)</code>, then filter
@@ -170,5 +190,3 @@ See <a href="/projects/search-engine-for-typesense/faceting">Faceting</a> for fi
 Related links: <a href="/projects/search-engine-for-typesense/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/query-dsl">Query DSL</a>, <a href="/projects/search-engine-for-typesense/dx">DX</a>,
 <a href="/projects/search-engine-for-typesense/joins">Joins</a>, <a href="/projects/search-engine-for-typesense/field-selection">Field Selection</a>, <a href="/projects/search-engine-for-typesense/compiler">Compiler</a>,
 <a href="/projects/search-engine-for-typesense/grouping">Grouping</a>, <a href="/projects/search-engine-for-typesense/observability">Observability</a>
-
-

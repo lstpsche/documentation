@@ -117,7 +117,30 @@
     "light": "/logo/light.svg",
     "dark": "/logo/dark.svg"
   },
-  "navbar": {},
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "icon": "github",
+        "href": "https://github.com/lstpsche"
+      },
+      {
+        "label": "LinkedIn",
+        "icon": "linkedin",
+        "href": "https://www.linkedin.com/in/lstpsche"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/lstpsche/search-engine-for-typesense"
+    }
+  },
+  "search": {
+    "prompt": "Search lstpsche docs..."
+  },
+  "seo": {
+    "indexing": "all"
+  },
   "contextual": {
     "options": [
      "copy",
@@ -133,6 +156,16 @@
     "socials": {
       "github": "https://github.com/lstpsche",
       "linkedin": "https://www.linkedin.com/in/lstpsche/"
-    }
+    },
+    "links": [
+      {
+        "header": "Resources",
+        "items": [
+          { "label": "GitHub", "href": "https://github.com/lstpsche" },
+          { "label": "LinkedIn", "href": "https://www.linkedin.com/in/lstpsche" },
+          { "label": "Search Engine for Typesense", "href": "https://github.com/lstpsche/search-engine-for-typesense" }
+        ]
+      }
+    ]
   }
 }
