@@ -103,6 +103,23 @@ SearchEngine::Book
   .options(prioritize_exact_match: false)
 ```
 
+### Additional chainers → params
+
+| Chainer | Effect | Typesense param |
+| --- | --- | --- |
+| `search(q)` | Set query string (default `"*"`) | `q` |
+| `options(opts)` | Shallow-merge low-level options (e.g., `query_by`, `infix`, `selection.strict_missing`) | Various body keys |
+| `limit(n)` / `offset(n)` | Limit/offset alternative when page/per are absent | `per_page`, `page` |
+| `cache(true/false/nil)` | Toggle URL-level caching per call | `use_cache` (URL) |
+| `use_synonyms(val)` | Enable/disable synonyms | `enable_synonyms` |
+| `use_stopwords(val)` | Enable/disable stopwords (inverted) | `remove_stop_words` |
+| `unscope(*parts)` | Remove relation state (e.g., `:where`, `:order`, `:select`, `:limit`, `:offset`, `:page`, `:per`) | N/A (state cleared) |
+
+Notes:
+- `use_stopwords(false)` sets `remove_stop_words=true`; `nil` clears the override.
+- `limit/offset` map to `per_page`/`page` only when `page/per` are not set.
+- Prefer dedicated chainers for joins/selection/grouping/presets; `options` is shallow on the params hash.
+
 ## Joins & presets (orientation)
 
 - <strong>Joins</strong>: Declare associations on the model, apply with <code>.joins(:assoc)</code>, then filter

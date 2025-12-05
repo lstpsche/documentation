@@ -58,6 +58,7 @@
               "projects/search-engine-for-typesense/multi-search",
               "projects/search-engine-for-typesense/multi-search-guide",
               "projects/search-engine-for-typesense/deletion",
+              "projects/search-engine-for-typesense/update",
               "projects/search-engine-for-typesense/active-record-syncable"
             ]
           },

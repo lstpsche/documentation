@@ -351,6 +351,28 @@ sequenceDiagram
   end
 ```
 
+### Targeted bulk helpers (`Bulk.index_collections` / `Bulk.reindex_collections!`)
+
+- Run blue/green or destructive indexation for a specific set of collections (not just “all”).
+- Two-stage plan:
+  - **Stage 1**: inputs that are not referrers of other inputs (referenced-first order).
+  - **Stage 2**: unique referencers of any input, topologically sorted and processed once.
+- Cascades are suppressed inside individual runs; the final cascade stage handles referencers exactly once.
+
+```ruby
+# Blue/green selected collections
+SearchEngine::Bulk.index_collections(:products, :brands)
+
+# Destructive reindex of a subset with an injected client
+SearchEngine::Bulk.reindex_collections!(
+  SearchEngine::Book,
+  "publishers",
+  client: SearchEngine::Client.new
+)
+```
+
+Use these helpers when you need a targeted rollout (only changed collections) but still want reference-aware ordering.
+
 ### Bulk indexing (all collections)
 
 Use Bulk helpers to index or reindex every declared SearchEngine collection discovered under your configured <code>search_engine_models</code> directory. The engine ensures models are eagerly loaded, discovers collections, and orchestrates a two‑stage, reference‑aware run (inputs first, then a deduped cascade of referencers).

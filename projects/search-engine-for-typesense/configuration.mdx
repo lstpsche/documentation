@@ -25,6 +25,8 @@ This engine centralizes all knobs under <code>SearchEngine.config</code>. These 
 | `cache_ttl_s`      | Integer              | `60`           | URL-level option: TTL seconds -> `cache_ttl` |
 | `strict_fields`    | Boolean              | `true` in development/test; else `false` | Parser validates unknown fields when `true`; see <a href="/projects/search-engine-for-typesense/query-dsl#error-reference">Query DSL</a> |
 | `multi_search_limit` | Integer            | `50`           | Hard cap on searches per multi-search; validated before network call |
+| `search_engine_models` | String           | `"app/search_engine"` | Path (relative or absolute) to host app SearchEngine models; drives the dedicated loader |
+| `relation_print_materializes` | Boolean   | `true`         | When true, `Relation#inspect` materializes a preview; set `false` for zero-I/O console output |
 
 ## ENV mapping
 
@@ -202,6 +204,54 @@ end
 | `strict_mode` | `false` | When `true`, blocks suspicious catch-all filters |
 | `timeout_ms` | `nil` | Optional timeout for delete requests (ms) |
 | `estimation_enabled` | `false` | Enable found estimation via search before delete |
+
+### Observability & logging
+
+```ruby
+SearchEngine.configure do |c|
+  c.observability.enabled = true      # turn on compact logging subscriber
+  c.observability.log_format = :kv    # :kv or :json
+  c.observability.max_message_length = 200
+  c.observability.include_error_messages = false
+  c.observability.emit_legacy_event_aliases = true
+end
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `enabled` | `false` | Enable compact logging subscriber automatically |
+| `log_format` | `:kv` | `:kv` or `:json` |
+| `max_message_length` | `200` | Truncation for error samples |
+| `include_error_messages` | `false` | Include short error messages in logs |
+| `emit_legacy_event_aliases` | `true` | Emit legacy aliases alongside new events |
+
+See <a href="/projects/search-engine-for-typesense/observability">Observability</a> for event payloads and redaction.
+
+### Grouping UX
+
+```ruby
+SearchEngine.configure do |c|
+  c.grouping.warn_on_ambiguous = true
+end
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `warn_on_ambiguous` | `true` | Emit non-fatal warnings for ambiguous grouping combos |
+
+### Loader & console
+
+```ruby
+SearchEngine.configure do |c|
+  c.search_engine_models = "app/search_engine" # loader path
+  c.relation_print_materializes = false        # keep console inspect zero-I/O
+end
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `search_engine_models` | `"app/search_engine"` | Path (relative to Rails.root or absolute) used by the dedicated Zeitwerk loader |
+| `relation_print_materializes` | `true` | When false, `Relation#inspect` stays concise without materialization |
 
 ## Validation & warnings
 

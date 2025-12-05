@@ -23,6 +23,10 @@ class Product < ApplicationRecord
 end
 ```
 
+<Info>
+Callbacks run synchronously (`after_create`/`after_update`/`after_destroy` by default); `SearchEngine.config.indexer.dispatch` does **not** affect these hooks. Use the background-job pattern below if you need async behavior.
+</Info>
+
 With explicit options:
 
 ```ruby
