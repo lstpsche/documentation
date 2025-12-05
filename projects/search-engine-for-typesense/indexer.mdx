@@ -467,7 +467,7 @@ SearchEngine::Book.stale(partition: 42).limit(10).pluck(:id)
 
 Notes:
 
-- <code>.stale</code> compiles only <code>stale</code> rules and returns an empty relation when no rules produce a filter for the given partition.
+- <code>.stale</code> compiles only <code>stale</code> rules and returns an empty relation when no rules produce a filter for the given partition (implemented as a safe, always‑false filter so Typesense never 400s).
 - For destructive deletes, prefer <code>Model.cleanup</code> or the <code>index:delete_stale</code> task.
 
 - <code>SearchEngine.config.stale_deletes.enabled = true</code>

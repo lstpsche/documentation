@@ -15,6 +15,7 @@ This page explains how reference fields power JOINs, what gets stored in the sch
 - <strong>Single‑hop only</strong>: no multi‑hop (<code>$a.$b.field</code>) joins.
 - <strong>Reindex rules</strong>: updates to referenced docs (e.g., <code>Author.name</code>) don’t require reindexing referencers; changing join keys or denormalized copies does.
 - <strong>Cascade</strong>: single hop, detects A ↔ B cycles and skips those pairs.
+- <strong>Reference validation</strong>: during <code>Schema.apply!</code> the gem resolves <code>reference:</code> targets via alias when present, but gracefully falls back to the physical name if no alias exists. Aliases are still recommended for blue/green deploys, yet physical‑only setups are supported.
 
 ---
 
