@@ -68,55 +68,26 @@ See also: <a href="/projects/search-engine-for-typesense/compiler">Compiler</a>.
 
 ---
 
-## Predicates as AST
+## Filtering with where
 
-<a href="/projects/search-engine-for-typesense/relation">Relation</a>#where parses inputs into a Predicate AST via the <a href="/projects/search-engine-for-typesense/query-dsl">Query DSL</a> and stores nodes in <code>ast</code> (authoritative). Legacy string fragments are preserved for backward compatibility, but compilation prefers AST when present.
-
-```ruby
-rel = SearchEngine::Book.where(id: 1).where(["price > ?", 100])
-rel.ast # => [#<AST::Eq field=:id ...>, #<AST::Gt field=:price ...>]
-rel.to_typesense_params[:filter_by] # compiled string via Compiler
-```
-
-- <strong>Read-only</strong>: <code>rel.ast</code> returns a frozen Array.
-- <strong>Composition</strong>: multiple <code>where</code> calls append with AND semantics (compiled as <code>AST.and_</code>).
-- <strong>Back-compat</strong>: legacy relations with <code>filters</code> are migrated once into <code>AST::Raw</code> nodes.
-
----
-
-## where DSL
-
-The <code>where</code> chainer accepts three forms. Each call appends fragments with AND semantics. The relation is immutable and returns a new instance.
+Use <code>where</code> with hash input, a template, or a raw fragment. Each call ANDs predicates.
 
 ```ruby
 SearchEngine::Book
-  .where(id: 5)
-  .where("author_id:=[1,2,3]")
-  .where("price > ?", 100)
+  .where(published: true)
+  .where(["price >= ?", 100])
+  .where("category_id:=[1,2,3]")
 ```
 
-- <strong>Hash form</strong>: keys must match the model’s declared <code>attributes</code>.
-  - Scalars become <code>field:=&lt;quoted&gt;</code>
-  - Arrays become <code>field:=[&lt;quoted, ...&gt;]</code>
-- <strong>Raw string</strong>: passed through untouched (escape hatch); no validation.
-- <strong>Placeholders</strong>: <code>?</code> are replaced by safely quoted values. Placeholder count must match args.
+- Hash form validates fields when attributes are declared.
+- Template form uses <code>?</code> placeholders and safe quoting.
+- Raw strings are passed through as an escape hatch.
+- Call <code>.joins(:assoc)</code> before filtering on joined fields.
+- Use <code>.where.not(...)</code> to negate predicates.
 
-```mermaid
-flowchart LR
-  A[Hash/Fragment Input] --> B[Parser]
-  B --> C[AST nodes]
-  C --> D[Relation.ast]
-  D --> E[Compiler]
-  E --> F[filter_by]
-```
-
-Notes:
-
-- Hash keys are validated against model attributes.
-- Raw string form is passed through as <code>AST::Raw</code>; use with care.
-- Placeholder form is sanitized; <code>?</code> args are quoted/escaped.
-
----
+<Note>
+  For predicate parsing rules and AST details, see <a href="/projects/search-engine-for-typesense/query-dsl">Query DSL</a>.
+</Note>
 
 ## order / select / pagination
 
@@ -132,77 +103,12 @@ SearchEngine::Book
 - <strong>limit(n) / offset(n)</strong>: numeric. <code>limit >= 1</code>, <code>offset >= 0</code>.
 - <strong>page(n) / per(n)</strong>: numeric. <code>page >= 1</code>, <code>per >= 1</code>. The <code>per(n)</code> method writes to <code>per_page</code> internally.
 
-### Mapping to Typesense parameters (performed by a compiler)
+### Compiled params and debugging
 
-- <code>order(updated_at: :desc)</code> → <code>sort_by=updated_at:desc</code>
-- <code>order(name: :asc, updated_at: :desc)</code> → <code>sort_by=name:asc,updated_at:desc</code>
-- <code>order(text_match: :desc)</code> → <code>sort_by=_text_match:desc</code>
-- <code>select(:id, :name)</code> → <code>include_fields=id,name</code>
-- <code>limit(50)</code> → <code>per_page=50</code> when <code>page/per</code> are not set
-- <code>offset(200)</code> → <code>page = (offset / per_page) + 1</code> when <code>page/per</code> are not set
-- <code>page(2).per(20)</code> → <code>page=2&amp;per_page=20</code> (wins over <code>limit/offset</code>)
+- <strong>Relation#to_typesense_params</strong>: compile immutable state to a Typesense body params object.
+- <strong>Relation#to_h</strong>: return the compiled params as a Hash (deterministic order).
+- <strong>Relation#inspect</strong>: preview hydrated results; control with <code>SearchEngine.config.relation_print_materializes</code>.
 
-Dedupe behavior: <strong>order last-wins by field</strong>, <strong>select first-wins</strong>.
-
----
-
-## Compiler and debug helpers
-
-- <strong>Relation#to_typesense_params</strong>: compile immutable state to a Typesense body params object. Pure and deterministic. Omits URL-level options (cache knobs are handled by the client).
-- <strong>Relation#to_h</strong>: returns the compiled params as a Hash (deterministic order).
-- <strong>Relation#inspect</strong>: AR-style container with hydrated preview, e.g. <code>#&lt;SearchEngine::Relation [#&lt;SearchEngine::Book ...&gt;, #&lt;SearchEngine::Book ...&gt;, ...]&gt;</code>. Toggle via <code>SearchEngine.config.relation_print_materializes</code>.
-
-### Defaults merged
-
-- <strong>q</strong>: `"*"` unless overridden via <code>relation.options(q: ...)</code>.
-- <strong>query_by precedence</strong>:
-  1. explicit <code>relation.options(query_by: ...)</code>
-  2. model-level default via <code>SearchEngine::Model.query_by 'field1, field2'</code> (accepts String/Symbol/Array; normalized to a canonical String)
-  3. global <code>SearchEngine.config.default_query_by</code>
-- Other body params (e.g., <code>infix</code>) follow config defaults.
-- URL-level options like <strong>use_cache</strong> and <strong>cache_ttl</strong> are excluded from the compiled body and handled by the client.
-
-### Key order and omission
-
-- Insertion order for stability: <code>q</code>, <code>query_by</code>, <code>filter_by</code>, <code>sort_by</code>, <code>include_fields</code>, <code>page</code>, <code>per_page</code> (then any remaining supported keys, e.g., <code>infix</code>).
-- Keys with empty/nil values are omitted.
-
-### Mapping table
-
-| Relation state                  | Typesense param    | Notes |
-| ---                             | ---                | ---   |
-| `ast: [..]`                     | `filter_by`        | compiled via Compiler; preferred |
-| `filters: [..]`                 | `filter_by`        | joined with ` && ` (fallback) |
-| `orders: [..]`                  | `sort_by`          | comma-joined |
-| `select: [..]` + `exclude: [..]`| `include_fields`/`exclude_fields` | precedence rules apply |
-| `page` / `per_page`             | `page`, `per_page` | if present, they win |
-| `limit` / `offset`              | `page`, `per_page` | fallback: `per_page = limit`; `page = (offset / limit).floor + 1` |
-| `options[:q]` or default "*"    | `q`                | always present |
-| `relation.options[:query_by]`   | `query_by`         | wins over model/global defaults |
-| `model.query_by`                | `query_by`         | when set; normalized canonical String |
-| `config.default_query_by`       | `query_by`         | fallback; omitted when nil |
-
-```mermaid
-flowchart LR
-  A[Relation State] --> B[Compiler]
-  B --> C[Typesense Params]
-```
-
-### Examples
-
-```ruby
-rel = SearchEngine::Book
-        .where(published: true, author_id: [1,2])
-        .order(updated_at: :desc)
-        .select(:id, :title)
-        .page(2).per(20)
-
-rel.to_typesense_params.to_h
-# => { q: "*", query_by: "title,description", filter_by: "author_id:=[1,2] && published:=true", sort_by: "updated_at:desc", include_fields: "id,title", page: 2, per_page: 20 }
-```
-
-<Info>
-  URL options (e.g., caching knobs) are handled by the <a href="/projects/search-engine-for-typesense/client">Client</a> via common params, not by the compiler.
-</Info>
-
-
+<Note>
+  For compilation rules and parameter mapping, see <a href="/projects/search-engine-for-typesense/compiler">Compiler</a> and <a href="/projects/search-engine-for-typesense/debugging">Debugging</a>.
+</Note>

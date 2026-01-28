@@ -1,0 +1,82 @@
+---
+title: "Scopes and advanced ORM"
+description: "Compose scopes, joins, filters, and advanced query features."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/models">Models</a>, <a href="/projects/search-engine-for-typesense/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/presets">Presets</a>, <a href="/projects/search-engine-for-typesense/curation">Curation</a>, <a href="/projects/search-engine-for-typesense/grouping">Grouping</a>, <a href="/projects/search-engine-for-typesense/faceting">Faceting</a>, <a href="/projects/search-engine-for-typesense/multi-search">Multi-search</a>
+
+Use this page when you want reusable scopes or multi-step query chains.
+
+<Note>
+  Examples assume the <code>SearchEngine::Product</code> model from <a href="/projects/search-engine-for-typesense/guidebook-model-configuration">Model configuration</a>.
+</Note>
+
+## Define model scopes
+
+```ruby app/search_engine/product.rb
+class SearchEngine::Product < SearchEngine::Base
+  collection :products
+
+  scope :active, -> { where(active: true) }
+  scope :by_store, ->(store_id) { where(store_id: store_id) }
+end
+```
+
+## Combine search, filter, join, and scope
+
+```ruby
+SearchEngine::Product
+  .joins(:brand)
+  .active
+  .where(brand: { name: "Acme" })
+  .where(["price >= ?", 100])
+  .search("running")
+  .include_fields(:sku, :name, brand: [:name])
+  .order(price: :asc)
+  .page(1)
+  .per(20)
+  .to_a
+```
+
+## Other common flows
+
+### Presets
+
+```ruby
+SearchEngine::Product.all.preset(:default_search, mode: :merge)
+```
+
+### Curation
+
+```ruby
+SearchEngine::Product.all.pin("prod_1", "prod_2").hide("prod_9")
+```
+
+### Grouping and faceting
+
+```ruby
+SearchEngine::Product
+  .group_by(:brand_id, limit: 1)
+  .facet_by(:category_id, max_values: 10)
+```
+
+### Multi-search
+
+```ruby
+SearchEngine.multi_search(common: { query_by: "name" }) do |m|
+  m.add :products, SearchEngine::Product.all.per(10)
+  m.add :brands, SearchEngine::Brand.all.per(5)
+end
+```
+
+### Mutations
+
+```ruby
+SearchEngine::Product.upsert(record: ::Product.first)
+SearchEngine::Product.where(status: "archived").delete_all
+```
+
+## Next steps
+
+- Tune curation and presets in <a href="/projects/search-engine-for-typesense/curation">Curation</a> and <a href="/projects/search-engine-for-typesense/presets">Presets</a>.
+- Learn grouping details in <a href="/projects/search-engine-for-typesense/grouping">Grouping</a>.

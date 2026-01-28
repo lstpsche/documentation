@@ -185,94 +185,18 @@ SearchEngine::Order
   .where(shipments: { carrier: 'UPS' })
 ```
 
-### Client‑side fallback for shared‑key joins
+## Advanced behavior
 
-When Typesense lacks a suitable reference for a declared join (common for shared‑key many‑to‑many semantics, or when the target key is not unique), the engine transparently falls back to a two‑step client‑side rewrite during hydration:
-
-1. Pre‑query the joined collection to fetch the set of foreign key values that satisfy the joined predicates.
-2. Rewrite the base relation to <code>IN(local_key, &lt;keys&gt;)</code> and retry as a single collection search.
-
-This preserves the developer experience of a single‑hop join while avoiding extra technical collections.
-
-Supported (v1):
-
-- <code>where</code> on joined fields with Eq/In (AND‑combined)
-- Multiple joined associations (AND semantics across assocs)
-
-Not supported in fallback (errors raised):
-
-- Sorting by joined fields
-- Selecting nested joined fields in the same relation
-- OR with joined predicates, ranges or negations on joined fields
-
-Auto‑inference of join keys:
-
-- Keys are taken from explicit <code>local_key</code>/<code>foreign_key</code> when provided.
-- Otherwise, the resolver infers a single shared attribute between base and target, preferring names ending with <code>_id</code>. Ambiguity raises <code>InvalidJoinConfig</code> with candidates.
-
-Example (generic):
-
-```ruby
-class SearchEngine::Enrollment < SearchEngine::Base
-  collection :enrollments
-  attribute :student_id, :integer
-  attribute :course_id, :integer
-end
-
-class SearchEngine::Student < SearchEngine::Base
-  collection :students
-  attribute :student_id, :integer
-  belongs_to_many :enrollments, local_key: :student_id, foreign_key: :student_id
-end
-
-class SearchEngine::Course < SearchEngine::Base
-  collection :courses
-  attribute :course_id, :integer
-  has_many :enrollments, foreign_key: :course_id
-end
-
-# Filter students by a joined field on enrollments (fallback engages if no Typesense reference)
-SearchEngine::Student
-  .joins(:enrollments)
-  .where(enrollments: { course_id: 42 })
-```
+- Client-side fallback can run when Typesense references are missing or shared keys are used.
+- Asynchronous references are available via <code>async_ref: true</code> on <code>belongs_to</code>.
 
 <Info>
   <strong>Quoting and type coercion</strong>: Joined-field values are coerced using the target model’s attribute types. If a joined field is typed as <code>:string</code>, numeric inputs are converted to strings and quoted in <code>filter_by</code> (e.g., <code>$calculated_products(store_id:="1070")</code>).
 </Info>
 
-### Reference‑less joins: preflight fallback
-
-When the base collection’s join key references a different collection than the one you’re filtering on (e.g., <code>orders.order_id → customers.id</code>, but your join is to <code>shipments.order_id</code>), Typesense cannot resolve <code>$shipments(...)</code> on the server. The engine detects this case before sending the request and automatically applies the client‑side fallback:
-
-1. Inspect compiled schema for a field‑level <code>reference</code> matching the association’s `{ collection }.{ foreign_key }`.
-2. If missing, pre‑query the joined collection with the inner predicates, collect matching `{ foreign_key }` values.
-3. Rewrite the base relation to <code>IN(local_key, &lt;keys&gt;)</code> and execute as a single search.
-
-Effects and guarantees:
-
-- Applies across materializers: <code>.to_a</code>, <code>.count</code>, <code>.exists?</code>, <code>.find_by</code>, <code>.ids</code>, and <code>.pluck</code>, and console preview.
-- Supports <code>Eq</code>/<code>In</code> on joined fields (AND‑combined). OR/ranges/negations on joined fields are rejected.
-- Selecting nested joined fields or sorting by joined fields is not supported in fallback.
-- Ordering can differ between preview and full materialization without an explicit sort; add a deterministic <code>order(...)</code> to stabilize.
-
-Observability:
-
-- Emits <code>search_engine.joins.client_side_fallback</code> when fallback is engaged.
-
-Troubleshooting fallback:
-
-- “No reference field found”: fallback engages automatically if <code>.joins(...)</code> is present.
-- “Sorting by joined fields is not supported”: move sorting to base fields or post‑process results.
-- “Selecting joined fields is not supported”: fetch base results, then load related records via instance readers.
-- “Ambiguous join keys”: specify <code>local_key:</code>/<code>foreign_key:</code> explicitly on the association.
-
-## Registry and Read APIs
-
-- <code>joins_config</code> returns a frozen mapping `{ name(Symbol) => JoinConfig(Hash) }`.
-- <code>join_for(name)</code> returns a single normalized config or raises <code>SearchEngine::Errors::UnknownJoin</code> with suggestions.
-
-The registry is per‑class, immutable to callers, and uses copy‑on‑write for safe updates. Subclasses inherit parent declarations and may add new ones; duplicate names raise.
+<Note>
+  See <a href="/projects/search-engine-for-typesense/references-joins-deep-dive">References & JOINs — Deep dive</a> for full rules and caveats.
+</Note>
 
 ## Relation Usage
 
@@ -315,65 +239,6 @@ Notes:
 - Base fields continue to work unchanged (e.g., <code>where(active: true)</code>).
 - Mixed base and joined predicates interleave as usual; the compiler preserves grouping semantics.
 - Raw <code>order</code> strings are accepted as‑is; ensure you supply valid Typesense fragments.
-
-### AST Path Diagram
-
-The parser produces a normal predicate node with a joined field path for the LHS. The compiler renders it verbatim.
-
-```mermaid
-flowchart TD
-  A[Hash input] -->|"{ authors: { last_name: 'Rowling' } }"| P[Parser]
-  P -->|"LHS '$authors.last_name'"| N[AST::Eq]
-  N --> C[Compiler]
-  C -->|filter_by| F["$authors.last_name:='Rowling'"]
-```
-
-## Association Table Pattern
-
-Render declared joins for a model to reason about relationships:
-
-| Name    | Target collection | Local key   | Foreign key | Notes |
-|---------|-------------------|-------------|-------------|-------|
-| authors | authors           | author_id   | id          | one‑to‑many by author_id |
-| orders  | orders            | id          | book_id     | order items linked to book |
-
-## Mermaid Overview
-
-```mermaid
-flowchart LR
-  subgraph Collections
-    B[books]
-    A[authors]
-    O[orders]
-  end
-
-  B -- author_id = id --> A
-  B -- id = book_id --> O
-```
-
-## Guardrails & errors
-
-Misuse scenarios are validated early with actionable errors and suggestions:
-
-- Unknown association on model → <code>SearchEngine::Errors::InvalidJoin</code> with guidance and suggestions.
-- Incomplete association config (missing <code>local_key</code>/<code>foreign_key</code>) → <code>SearchEngine::Errors::InvalidJoinConfig</code>.
-- Using joined fields without calling <code>.joins(:assoc)</code> → <code>SearchEngine::Errors::JoinNotApplied</code>.
-- Unknown field within the joined collection → <code>SearchEngine::Errors::UnknownJoinField</code> (best‑effort; skipped if target model is unavailable).
-- Multi‑hop paths (e.g., <code>$authors.publisher.name</code>) → <code>SearchEngine::Errors::UnsupportedJoinNesting</code>.
-- Duplicate selections/orders are deduped; first mention wins.
-
-### Troubleshooting
-
-- <strong>Unknown association</strong>: Declare it on the model via <code>belongs_to :name</code>, <code>has_one :name</code>, or <code>has_many :name</code>.
-- <strong>Join not applied</strong>: Chain <code>.joins(:assoc)</code> before filtering/sorting/selecting nested fields.
-- <strong>Unknown joined field</strong>: Verify the target collection’s attributes and spelling; suggestions may be provided.
-- <strong>Multi‑hop path</strong>: Only <code>$assoc.field</code> is supported. Denormalize deeper paths first.
-
-### Migration note
-
-Legacy <code>has</code> has been removed and will raise an error. Replace usages with <code>has_one</code> or <code>has_many</code> explicitly.
-
-Backlinks: <a href="https://github.com/lstpsche/search-engine-for-typesense#readme" target="_blank">README</a>, <a href="/projects/search-engine-for-typesense/field-selection">Field Selection</a>
 
 ## Nested field selection for joined collections
 
@@ -422,42 +287,16 @@ Internals: the returned params also include a reserved <code>:_join</code> key w
 
 ---
 
-## Instrumentation
+## Common pitfalls
 
-<Info>
-  A compile‑time event is emitted per relation compile to summarize JOIN usage.
-</Info>
+- Declare every association on the model before using <code>.joins(:assoc)</code>.
+- Use only single-hop paths like <code>$assoc.field</code>.
+- Keep joined field names aligned with the target model attributes.
 
-- <strong>Event</strong>: <code>search_engine.joins.compile</code>
-- <strong>Payload keys</strong> (nil/empty omitted):
-  - <code>collection</code> — fully‑qualified class name (e.g., <code>SearchEngine::Book</code>)
-  - <code>join_count</code> — integer number of associations referenced
-  - <code>assocs</code> — ordered short array of association names
-  - <code>used_in</code> — `{ include: [...], filter: [...], sort: [...] }` with association names
-  - <code>include_len</code> — character length of compiled include string
-  - <code>filter_len</code> — length of <code>filter_by</code>
-  - <code>sort_len</code> — length of <code>sort_by</code>
-  - <code>duration_ms</code> — compile duration
-  - <code>has_joins</code> — boolean
+## Deep dives
 
-No raw filters or string literal values are included.
-
----
-
-## Asynchronous references (belongs_to)
-
-<code>async_ref: true</code> on <code>belongs_to</code> encodes the field‑level reference as <code>"&lt;collection&gt;.&lt;foreign_key&gt;;async"</code> in the compiled schema. Typesense will accept the document even when the referenced target document is not yet present, resolving the link once it becomes available.
-
-```ruby
-class SearchEngine::Review < SearchEngine::Base
-  collection :reviews
-  attribute :review_id, :string
-
-  belongs_to :book, async_ref: true
-  # Example reference: "books.book_id;async" (exact key depends on auto‑resolution/overrides)
-end
-```
-
-Use asynchronous references when ingestion order cannot be guaranteed.
+- Reference fields and async refs: <a href="/projects/search-engine-for-typesense/references-joins-deep-dive">References & JOINs — Deep dive</a>
+- Joined selection + grouping example: <a href="/projects/search-engine-for-typesense/joins-selection-grouping">JOINs, Selection, and Grouping</a>
+- JOIN instrumentation and logs: <a href="/projects/search-engine-for-typesense/observability">Observability</a>
 
 

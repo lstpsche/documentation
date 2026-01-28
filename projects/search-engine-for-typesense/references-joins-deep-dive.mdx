@@ -9,7 +9,7 @@ This page explains how reference fields power JOINs, what gets stored in the sch
 
 ## Overview
 
-- <strong>Declare</strong> associations on your model: <code>belongs_to :author</code> and/or <code>has :books</code>.
+- <strong>Declare</strong> associations on your model: <code>belongs_to :author</code> and/or <code>has_many :books</code>.
 - <strong>Compile</strong> adds a field <code>reference: "authors.id"</code> for <code>author_id</code> in the <code>books</code> schema (belongs_to only; <code>has</code> does not emit references).
 - <strong>Query</strong> uses <code>$assoc.field</code> in filters/sorts and <code>$assoc(...)</code> in selection.
 - <strong>Single‑hop only</strong>: no multi‑hop (<code>$a.$b.field</code>) joins.
@@ -48,7 +48,7 @@ class SearchEngine::Author < SearchEngine::Base
   attribute :id, :integer
 
   # authors.id → books.author_id (reverse direction)
-  has :books, foreign_key: :author_id
+  has_many :books, foreign_key: :author_id
 end
 ```
 

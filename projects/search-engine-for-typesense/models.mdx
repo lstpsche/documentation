@@ -243,10 +243,10 @@ Notes:
 
 ### Instance association readers (joins)
 
-When you declare <code>belongs_to</code> or <code>has</code> on a model, an instance method with the same name is defined to resolve referenced records:
+When you declare <code>belongs_to</code>, <code>has_one</code>, or <code>has_many</code> on a model, an instance method with the same name is defined to resolve referenced records:
 
 - <code>belongs_to :author</code> → <code>book.author</code> returns a single record or <code>nil</code>.
-- <code>has :orders</code> → <code>book.orders</code> returns a chainable <code>Relation</code>.
+- <code>has_many :orders</code> → <code>book.orders</code> returns a chainable <code>Relation</code>.
 
 See details and examples in <a href="/projects/search-engine-for-typesense/joins#instance-association-readers-ar-like-hop">Joins</a>.
 

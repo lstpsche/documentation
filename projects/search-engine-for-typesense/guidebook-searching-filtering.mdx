@@ -1,0 +1,56 @@
+---
+title: "Searching and filtering"
+description: "Query, filter, paginate, and select fields with the Relation DSL."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/query-dsl">Query DSL</a>, <a href="/projects/search-engine-for-typesense/field-selection">Field Selection</a>, <a href="/projects/search-engine-for-typesense/relation-reference">Relation Guide</a>, <a href="/projects/search-engine-for-typesense/highlighting">Highlighting</a>, <a href="/projects/search-engine-for-typesense/ranking">Ranking</a>
+
+Use this page when you need to search and filter data from a collection.
+
+<Note>
+  Examples assume the <code>SearchEngine::Product</code> model from <a href="/projects/search-engine-for-typesense/guidebook-model-configuration">Model configuration</a>.
+</Note>
+
+## Basic search
+
+```ruby
+SearchEngine::Product
+  .search("running shoes")
+  .order(price: :asc)
+  .page(1)
+  .per(20)
+  .to_a
+```
+
+## Filtering patterns
+
+```ruby
+SearchEngine::Product.where(brand_id: "brand_1", tags: ["sale", "new"])
+SearchEngine::Product.where(["price >= ?", 100])
+SearchEngine::Product.where("price:>=100 && tags:=[\"sale\"]")
+SearchEngine::Product.where.not(status: "archived")
+```
+
+<Note>
+  Joined filters require <code>.joins(:assoc)</code> first. See <a href="/projects/search-engine-for-typesense/guidebook-joins-relations">JOINs and relations</a>.
+</Note>
+
+## Select only what you need
+
+```ruby
+SearchEngine::Product
+  .include_fields(:sku, :name, :price)
+  .exclude(:internal_notes)
+```
+
+## Pagination and limits
+
+```ruby
+SearchEngine::Product.page(2).per(25)
+SearchEngine::Product.limit(50) # fallback when page/per are not set
+```
+
+## Next steps
+
+- Build advanced predicates in <a href="/projects/search-engine-for-typesense/query-dsl">Query DSL</a>.
+- Tune ranking and highlights in <a href="/projects/search-engine-for-typesense/ranking">Ranking</a> and <a href="/projects/search-engine-for-typesense/highlighting">Highlighting</a>.

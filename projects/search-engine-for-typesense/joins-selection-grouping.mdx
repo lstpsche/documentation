@@ -28,7 +28,7 @@ SearchEngine::Book
 
 ## Association DSL & `joins`
 
-- Declare associations on the model: <code>belongs_to :author</code> and <code>has :books</code> (override <code>collection:</code>, <code>local_key:</code>, <code>foreign_key:</code> when needed).
+- Declare associations on the model: <code>belongs_to :author</code> and <code>has_many :books</code> (override <code>collection:</code>, <code>local_key:</code>, <code>foreign_key:</code> when needed).
 - Select associations on the relation with <code>joins(:association)</code>; names are validated against the model registry
 - Nested associations: only single‑hop paths are supported (<code>$assoc.field</code>); multi‑hop is not supported
 - Keys auto‑resolve by default (see <a href="/projects/search-engine-for-typesense/joins">Joins → Auto‑resolution</a>). Override for non‑standard schemas.

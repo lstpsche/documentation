@@ -10,7 +10,7 @@ Related: <a href="/projects/search-engine-for-typesense/observability">Observabi
 ## Joins
 
 - Missing or invalid association name
-  - Ensure you declared it on the model with <code>belongs_to :name</code> or <code>has :name</code>
+  - Ensure you declared it on the model with <code>belongs_to :name</code>, <code>has_one :name</code>, or <code>has_many :name</code>
   - See <a href="/projects/search-engine-for-typesense/joins#dsl">Joins → DSL</a>
 - Joined fields not appearing in selection
   - Use nested include fields and prefix joined fields with <code>$assoc.field</code>

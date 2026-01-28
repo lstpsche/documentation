@@ -24,27 +24,40 @@
             ]
           },
           {
-            "group": "Guides",
+            "group": "Guidebook",
             "pages": [
-              "projects/search-engine-for-typesense/relation",
+              "projects/search-engine-for-typesense/guidebook",
+              "projects/search-engine-for-typesense/guidebook-model-configuration",
+              "projects/search-engine-for-typesense/guidebook-indexing",
+              "projects/search-engine-for-typesense/guidebook-reindexing",
+              "projects/search-engine-for-typesense/guidebook-searching-filtering",
+              "projects/search-engine-for-typesense/guidebook-joins-relations",
+              "projects/search-engine-for-typesense/guidebook-scopes-advanced-orm",
               "projects/search-engine-for-typesense/query-dsl",
-              "projects/search-engine-for-typesense/joins",
+              "projects/search-engine-for-typesense/compiler",
               "projects/search-engine-for-typesense/references-joins-deep-dive",
               "projects/search-engine-for-typesense/joins-selection-grouping",
+              "projects/search-engine-for-typesense/cascading"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "projects/search-engine-for-typesense/models",
+              "projects/search-engine-for-typesense/relation",
+              "projects/search-engine-for-typesense/joins",
               "projects/search-engine-for-typesense/field-selection",
               "projects/search-engine-for-typesense/grouping",
               "projects/search-engine-for-typesense/faceting",
-              "projects/search-engine-for-typesense/materializers",
+              "projects/search-engine-for-typesense/highlighting",
+              "projects/search-engine-for-typesense/ranking",
+              "projects/search-engine-for-typesense/hit-limits",
               "projects/search-engine-for-typesense/presets",
               "projects/search-engine-for-typesense/curation",
+              "projects/search-engine-for-typesense/materializers",
               "projects/search-engine-for-typesense/collections-graph",
-              "projects/search-engine-for-typesense/cascading",
-              "projects/search-engine-for-typesense/models",
-              "projects/search-engine-for-typesense/compiler",
-              "projects/search-engine-for-typesense/highlighting",
-              "projects/search-engine-for-typesense/hit-limits",
-              "projects/search-engine-for-typesense/synonyms-stopwords",
               "projects/search-engine-for-typesense/cookbook-queries",
+              "projects/search-engine-for-typesense/synonyms-stopwords",
               "projects/search-engine-for-typesense/deferred-typesense-features"
             ]
           },
@@ -59,6 +72,7 @@
               "projects/search-engine-for-typesense/multi-search-guide",
               "projects/search-engine-for-typesense/deletion",
               "projects/search-engine-for-typesense/update",
+              "projects/search-engine-for-typesense/upsert",
               "projects/search-engine-for-typesense/active-record-syncable"
             ]
           },
