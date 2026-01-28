@@ -3,7 +3,10 @@ title: "Materializers"
 description: "Result hydration, memoization, pluck/ids validation against selection, and minimal requests for count/exists?."
 ---
 
-Related: <a href="/projects/search-engine-for-typesense/client">Client</a>, <a href="/projects/search-engine-for-typesense/field-selection">Field selection</a>, <a href="/projects/search-engine-for-typesense/models">Models</a>
+Related: <a href="/projects/search-engine-for-typesense/client">Client</a>,
+<a href="/projects/search-engine-for-typesense/field-selection">Field selection</a>,
+<a href="/projects/search-engine-for-typesense/models">Models</a>,
+<a href="/projects/search-engine-for-typesense/observability">Observability</a>
 
 ## Result materialization and hydration
 
@@ -80,6 +83,26 @@ Hints:
 
 <code>ids</code> delegates to <code>pluck(:id)</code>. It succeeds when <code>:id</code> is permitted by the effective selection. If <code>:id</code> is explicitly excluded or not part of an include list (when includes are present), it raises <code>InvalidSelection</code> and suggests how to fix it. When includes are empty, all fields are allowed except explicit excludes, so <code>ids</code> works by default.
 
+### Pick
+
+<code>pick(*fields)</code> returns the first matching record’s value(s) with the
+same selection guardrails as <code>pluck</code>. It returns <code>nil</code> when
+no records match.
+
+Example:
+
+```ruby
+SearchEngine::Book.pick(:name)
+# => "A Song of Ice and Fire"
+```
+
+Multiple fields:
+
+```ruby
+SearchEngine::Book.pick(:id, :name)
+# => [123, "A Song of Ice and Fire"]
+```
+
 See also: <a href="/projects/search-engine-for-typesense/field-selection">Field Selection DSL</a>.
 
 ---
@@ -104,6 +127,7 @@ flowchart TD
 - <code>last(n = nil)</code> → from the loaded page tail; no extra HTTP
 - <code>take(n = 1)</code> → head items; when <code>n == 1</code> returns a single object
 - <code>pluck(*fields)</code> → for one field returns a flat array; for many returns array-of-arrays. Falls back to raw documents when model readers are absent
+- <code>pick(*fields)</code> → returns the first row’s values; <code>nil</code> when no matches
 - <code>ids</code> → convenience for <code>pluck(:id)</code>
 - <code>count</code> → if loaded, uses memoized <code>found</code>; otherwise performs a minimal request
 - <code>exists?</code> → if loaded, uses memoized <code>found</code>; otherwise performs a minimal request
@@ -128,6 +152,7 @@ rel.to_a         # triggers fetch and memoizes
 rel.count        # uses memoized found
 rel.ids          # plucks id from cached hits
 rel.pluck(:name) # plucks a single field
+rel.pick(:name)  # picks the first record's name
 ```
 
 Callouts:
