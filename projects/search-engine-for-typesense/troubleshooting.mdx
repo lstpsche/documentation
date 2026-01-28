@@ -103,8 +103,9 @@ Related: <a href="/projects/search-engine-for-typesense/observability">Observabi
 - Empty input error
   - <code>delete_by</code> requires a non-blank String or a non-empty Hash
   - See <a href="/projects/search-engine-for-typesense/deletion#model%E2%80%91level-delete_by">Deletion → Model-level</a>
-- <code>Model.cleanup</code> skipped
-  - Ensure you declared <code>stale</code> rules inside <code>index</code>; otherwise cleanup logs a skip and returns <code>0</code>
+- <code>Model.cleanup</code> or <code>index:delete_stale</code> skipped
+  - Ensure you declared <code>stale</code> rules inside <code>index</code>; otherwise
+    cleanup logs a skip and returns <code>0</code>
   - Remember rules are OR‑ed; verify at least one resolves to a non‑empty filter for the given partition
 
 ## Error Reference

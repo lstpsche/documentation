@@ -401,23 +401,28 @@ Backlinks: <a href="/projects/search-engine-for-typesense/models">Models</a> · 
 
 Backlinks: <a href="/projects/search-engine-for-typesense/cli">CLI</a>, <a href="/projects/search-engine-for-typesense/observability">Observability</a>, <a href="/projects/search-engine-for-typesense/troubleshooting">Troubleshooting</a>, <a href="/projects/search-engine-for-typesense/configuration">Configuration</a>
 
+<Info>
+Define <code>stale</code> rules once. The same compiled filter powers <code>.stale</code>,
+<code>.cleanup</code>, <code>Indexer.delete_stale!</code>, and <code>index:delete_stale</code>.
+</Info>
+
 ```ruby
-class SearchEngine::Book < SearchEngine::Base
+class SearchEngine::Order < SearchEngine::Base
   index do
     # Register one or more stale rules; they will be OR‑merged
-    stale scope: :archived           # scope must return a Relation
-    stale :archived                  # attribute equality => { archived: true }
-    stale filter: "status:=archived" # raw Typesense fragment
+    stale scope: :cancelled            # scope must return a Relation
+    stale :archived                    # attribute equality => { archived: true }
+    stale filter: "status:=cancelled"  # raw Typesense fragment
     stale({ ends_at: ..Time.zone.now })
-    stale do |partition: nil|        # custom per‑partition rule
-      partition ? { publisher_id: partition, archived: true } : "archived:=true"
+    stale do |partition:|              # custom per‑partition rule
+      partition ? { store_id: partition, archived: true } : "archived:=true"
     end
   end
 end
 ```
 
 ```ruby
-SearchEngine::Indexer.delete_stale!(SearchEngine::Book, partition: nil)
+SearchEngine::Indexer.delete_stale!(SearchEngine::Order, partition: 42)
 ```
 
 - Compiles all declared <code>stale</code> rules into an OR‑merged <code>filter_by</code> string and issues <code>DELETE /collections/:collection/documents</code> with <code>filter_by</code>.
@@ -430,7 +435,7 @@ Typical filters:
 | Pattern | Example |
 | --- | --- |
 | Archived flag | <code>archived:=true</code> |
-| Partition + archived | <code>publisher_id:=123 && archived:=true</code> |
+| Partition + archived | <code>store_id:=123 && archived:=true</code> |
 | Date threshold | <code>updated_at:&lt;"2025-01-01T00:00:00Z"</code> or <code>updated_at:&lt;1704067200</code> |
 
 ```mermaid
@@ -456,13 +461,13 @@ You can preview or chain on the stale set using a scope-like class method that r
 
 ```ruby
 # Partition-specific stale docs compiled from `stale` rules
-SearchEngine::Book.stale(partition: 42)
+SearchEngine::Order.stale(partition: 42)
 
 # Whole-collection stale docs (if none of the rules depend on partition)
-SearchEngine::Book.stale
+SearchEngine::Order.stale
 
 # Chainable like AR
-SearchEngine::Book.stale(partition: 42).limit(10).pluck(:id)
+SearchEngine::Order.stale(partition: 42).limit(10).pluck(:id)
 ```
 
 Notes:
@@ -477,19 +482,21 @@ Notes:
 
 ### Stale cleanup DSL & model helper
 
-Define stale cleanup rules alongside your index DSL. Each <code>stale</code> call registers one rule; cleanup runs them with OR semantics.
+Define stale cleanup rules alongside your index DSL. Each <code>stale</code> call registers
+one rule; cleanup runs them with OR semantics and uses the same compiled filter as
+<code>Indexer.delete_stale!</code>.
 
 ```ruby
-class SearchEngine::Book < SearchEngine::Base
-  collection "books"
+class SearchEngine::Product < SearchEngine::Base
+  collection "products"
 
   index do
-    stale scope: :archived           # reuse a model scope (must return a Relation)
-    stale :marked_as_stale           # attribute equality => { marked_as_stale: true }
-    stale filter: "status:=archived" # raw Typesense fragment
+    stale scope: :archived              # reuse a model scope (must return a Relation)
+    stale :marked_as_stale              # attribute equality => { marked_as_stale: true }
+    stale filter: "status:=archived"    # raw Typesense fragment
     stale({ ends_at: ..Time.zone.now }) # hash converted via Sanitizer
-    stale do |partition: nil|        # custom filter per partition
-      partition ? "publisher_id:=#{partition} && archived:=true" : "archived:=true"
+    stale do |partition:|               # custom filter per partition
+      partition ? "store_id:=#{partition} && archived:=true" : "archived:=true"
     end
 
     map do |record|
@@ -503,9 +510,9 @@ Runtime cleanup is available directly on the model:
 
 ```ruby
 # Deletes documents matching any declared stale rules
-SearchEngine::Book.cleanup
-SearchEngine::Book.cleanup(partition: 42)
-SearchEngine::Book.cleanup(into: "books_20251011_120000_001")
+SearchEngine::Product.cleanup
+SearchEngine::Product.cleanup(partition: 42)
+SearchEngine::Product.cleanup(into: "products_20251011_120000_001")
 ```
 
 <code>SearchEngine::Base.cleanup</code> delegates to <code>SearchEngine::Deletion.delete_by</code>, emitting the same <code>search_engine.indexer.delete_stale</code> instrumentation. When no stale configuration exists, it logs a skip and returns <code>0</code>.
