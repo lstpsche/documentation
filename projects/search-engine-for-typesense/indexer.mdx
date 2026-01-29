@@ -513,9 +513,16 @@ Runtime cleanup is available directly on the model:
 SearchEngine::Product.cleanup
 SearchEngine::Product.cleanup(partition: 42)
 SearchEngine::Product.cleanup(into: "products_20251011_120000_001")
+# Clear Typesense cache after cleanup
+SearchEngine::Product.cleanup(clear_cache: true)
 ```
 
 <code>SearchEngine::Base.cleanup</code> delegates to <code>SearchEngine::Deletion.delete_by</code>, emitting the same <code>search_engine.indexer.delete_stale</code> instrumentation. When no stale configuration exists, it logs a skip and returns <code>0</code>.
+
+Pass <code>clear_cache: true</code> to clear the Typesense search cache after cleanup
+finishes. This invokes <code>SearchEngine::Cache.clear</code> and emits
+<code>search_engine.cache.clear</code>. Failures are logged and do not affect the cleanup
+result.
 
 Available <code>stale</code> inputs:
 
