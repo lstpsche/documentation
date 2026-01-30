@@ -164,6 +164,14 @@ source :lambda do |cursor: nil, partition: nil|
 end
 ```
 
+<Warning>
+  When <code>source</code> is not <code>:active_record</code>, you must define
+  <code>identify_by</code> on the model. The mapper ignores any <code>id</code>
+  returned from <code>map</code>, so SQL/lambda rows need an explicit identity
+  strategy. See
+  <a href="/projects/search-engine-for-typesense/models#document-identity-identify_by">Models</a>.
+</Warning>
+
 - <code>partition</code> and <code>cursor</code> are opaque; adapters interpret them per-domain (e.g., id ranges, keyset predicates, external API tokens).
 - Instrumentation: emits <code>search_engine.source.batch_fetched</code> and <code>search_engine.source.error</code>.
 
@@ -179,7 +187,8 @@ class SearchEngine::Book < SearchEngine::Base
   attribute :author_name, :string
   attribute :price_cents, :integer
 
-  # Default identity is record.id.to_s; override if needed
+  # Default identity is record.id.to_s for ActiveRecord sources.
+  # For :sql or :lambda sources, set identify_by.
   # identify_by :isbn
   # identify_by ->(r) { "#{r.publisher_id}-#{r.id}" }
 

@@ -47,7 +47,16 @@ Note: <code>.find</code> is available on the model class only; it is not delegat
 
 ### Document identity (identify_by)
 
-Every Typesense document must include a unique String <code>id</code>. The gem computes this automatically per record and injects it during indexing.
+Every Typesense document must include a unique String <code>id</code>. The gem computes this
+automatically per record and injects it during indexing.
+
+<Warning>
+  When <code>source</code> is not <code>:active_record</code>, you must define
+  <code>identify_by</code>. SQL and lambda sources yield rows that do not expose
+  <code>id</code>, and the mapper ignores any <code>id</code> returned from <code>map</code>.
+  See <a href="/projects/search-engine-for-typesense/troubleshooting">Troubleshooting</a> for
+  missing id errors during indexing.
+</Warning>
 
 - Default: <code>record.id.to_s</code>
 - Override with <code>identify_by</code>:
@@ -76,7 +85,9 @@ Rules and behavior:
 - <code>attribute :id, ...</code> is invalid and raises. Use <code>identify_by</code>.
 - Any <code>id</code> returned from <code>index -> map</code> is ignored.
 - Inspect output renders <code>id</code> first regardless of whether it was declared.
-- **Precedence order**: When creating/upserting documents, the id is resolved as: (1) explicit <code>:id</code> attribute provided, (2) <code>identify_by</code> strategy result, (3) <code>record.id.to_s</code> fallback.
+- **Precedence order**: When creating/upserting documents, the id is resolved as:
+  (1) explicit <code>:id</code> attribute provided, (2) <code>identify_by</code> strategy
+  result, (3) <code>record.id.to_s</code> fallback (ActiveRecord sources only).
 - **String coercion**: All IDs are coerced to strings internally (Typesense requirement). The gem handles this automatically.
 
 ### System field: `doc_updated_at`
@@ -166,6 +177,7 @@ class SearchEngine::Book < SearchEngine::Base
   collection :books
   attribute :title, :string
   attribute :author_id, :integer
+  identify_by ->(row) { row['id'] }
 
   index do
     source :sql, sql: "SELECT id, title, author_id FROM books"
