@@ -255,6 +255,19 @@ SearchEngine::Book.rebuild_partition!(partition: publisher_id, into: "optional_p
 SearchEngine::Book.rebuild_partition!(partition: [1, 2, 3])
 ```
 
+#### Summary return value
+
+<code>SearchEngine::Indexer::Summary</code> includes:
+- <code>collection</code>: logical collection name
+- <code>status</code>: <code>:ok</code>, <code>:partial</code>, or <code>:failed</code>
+- <code>batches_total</code>: total number of batches processed
+- <code>docs_total</code>: total documents processed
+- <code>success_total</code>: successfully indexed documents
+- <code>failed_total</code>: failed documents
+- <code>failed_batches_total</code>: count of batches with failures
+- <code>duration_ms_total</code>: total wall-clock duration in milliseconds
+- <code>batches</code>: array of per-batch stats
+
 ```mermaid
 sequenceDiagram
   participant Orchestrator
@@ -373,6 +386,18 @@ SearchEngine::Bulk.reindex_collections!(
 
 Use these helpers when you need a targeted rollout (only changed collections) but still want reference-aware ordering.
 
+#### Return value
+
+<code>Bulk.index_collections</code> and <code>Bulk.reindex_collections!</code> return a hash with:
+- <code>mode</code>: <code>:index</code> or <code>:reindex</code>
+- <code>inputs</code>: array of input collection names
+- <code>stage_1</code>: array of stage 1 collection names
+- <code>cascade</code>: array of cascade stage collection names
+- <code>inputs_count</code>: number of input collections
+- <code>stage_1_count</code>: number of stage 1 collections
+- <code>cascade_count</code>: number of cascade collections
+- <code>failed_collections_total</code>: count of unresolved collection targets
+
 ### Bulk indexing (all collections)
 
 Use Bulk helpers to index or reindex every declared SearchEngine collection discovered under your configured <code>search_engine_models</code> directory. The engine ensures models are eagerly loaded, discovers collections, and orchestrates a two‑stage, reference‑aware run (inputs first, then a deduped cascade of referencers).
@@ -393,7 +418,8 @@ Notes:
 - index_all uses each model's <code>.index_collection</code> (presence/drift checks, apply+retention when needed; otherwise index into current alias).
 - reindex_all! uses each model's <code>.reindex_collection!</code> (drop active physical, then <code>.index_collection</code>).
 - Discovery leverages the engine’s dedicated loader and <code>CollectionResolver.models_map</code>; ensure your collections live under <code>app/search_engine</code> (default) or your configured <code>SearchEngine.config.search_engine_models</code> path.
-- Emits <code>search_engine.bulk.run</code> with `{ inputs, stage_1, cascade, counts }`. See Observability for payload details.
+- Emits <code>search_engine.bulk.run</code> with `{ inputs, stage_1, cascade, counts, failed_collections_total }`. See Observability for payload details.
+- Return value: same hash structure as <code>Bulk.index_collections</code> / <code>Bulk.reindex_collections!</code>, including <code>failed_collections_total</code>.
 
 Backlinks: <a href="/projects/search-engine-for-typesense/models">Models</a> · <a href="/projects/search-engine-for-typesense/schema">Schema</a> · <a href="/projects/search-engine-for-typesense/observability">Observability</a>
 

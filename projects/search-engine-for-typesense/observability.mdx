@@ -19,6 +19,7 @@ This engine emits lightweight ActiveSupport::Notifications events around client 
   - <code>search_engine.indexer.partition_finish</code> — partition processing finished with summary
   - <code>search_engine.indexer.batch_import</code> — each bulk import attempt
   - <code>search_engine.indexer.delete_stale</code> — stale delete lifecycle (started/ok/failed/skipped)
+  - <code>search_engine.bulk.run</code> — bulk indexing/reindexing run (multi-collection orchestration)
   - <code>search_engine.joins.compile</code> — compile-time summary of JOINs usage
   - <code>search_engine.grouping.compile</code> — compile-time summary of grouping (field/limit/missing_values)
   - <code>search_engine.selection.compile</code> — compile-time summary of selection counts (include/exclude/nested)
@@ -72,6 +73,7 @@ sequenceDiagram
 - <strong>geo.compile</strong>: `{ collection, filters_count, shapes, sort_mode, radius_bucket, duration_ms }`
 - <strong>vector.compile</strong>: `{ collection, query_vector_present, dims, hybrid_weight, ann_params_present, duration_ms }`
 - <strong>hits.limit</strong>: `{ collection, early_limit, validate_max, applied_strategy, triggered, total_hits, duration_ms }`
+- <strong>bulk.run</strong>: `{ mode, inputs, stage_1, cascade, inputs_count, stage_1_count, cascade_count, failed_collections_total }`
 
 Redaction rules:
 - Sensitive keys matching <code>/key|token|secret|password/i</code> are redacted
