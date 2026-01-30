@@ -174,17 +174,17 @@ flowchart LR
 ```mermaid
 flowchart LR
   subgraph R[Relation state]
-    J[joins(:authors)]
-    S[include_fields(:id,:title, authors: [:first_name,:last_name])]
-    W[where(authors: { last_name: "Rowling" })]
-    G[group_by(:author_id, limit: 1)]
+    J["joins(:authors)"]
+    S["include_fields(:id,:title, authors: [:first_name,:last_name])"]
+    W["where(authors: { last_name: 'Rowling' })"]
+    G["group_by(:author_id, limit: 1)"]
   end
   R --> C[Compiler]
-  C --> P[Typesense params
-  { include_fields: "$authors(...)",
-    filter_by: "$authors.last_name:=\"Rowling\"",
-    group_by: "author_id",
-    group_limit: 1 }]
+  C --> P[Typesense params]
+  P --> P1["include_fields: $authors(...)"]
+  P --> P2["filter_by: $authors.last_name:='Rowling'"]
+  P --> P3["group_by: author_id"]
+  P --> P4["group_limit: 1"]
 ```
 
 ### Grouped response shaping (representatives per author)
@@ -192,9 +192,9 @@ flowchart LR
 ```mermaid
 flowchart TD
   A[Typesense grouped response] -->|grouped_hits| B[Result shaping]
-  B --> C[Groups (Result::Group[])]
-  C --> D[Representative hits (to_a/hits)]
-  C --> E[Per-group hits (group.hits)]
+  B --> C["Groups (Result::Group[])"]
+  C --> D["Representative hits (to_a/hits)"]
+  C --> E["Per-group hits (group.hits)"]
 ```
 
 ## Performance notes
@@ -211,5 +211,3 @@ end
 ```
 
 See <a href="/projects/search-engine-for-typesense/observability">Observability</a> for payload redaction and event payloads.
-
-
