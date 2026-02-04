@@ -11,21 +11,40 @@ A thin wrapper around the official <code>typesense</code> Ruby gem that provides
 
 ### Usage
 
+Prefer `SearchEngine.client` to get the configured client instance. It respects
+`SearchEngine.config.client` when set, returns `OfflineClient` in test mode, or
+creates a new `Client` instance:
+
 ```ruby
-client = SearchEngine::Client.new
-client.search(collection: "products", params: { q: "milk", query_by: "name" }, url_opts: { use_cache: true })
+client = SearchEngine.client
+client.search(collection: "books", params: { q: "milk", query_by: "name" },
+              url_opts: { use_cache: true })
 client.multi_search(
   searches: [
-    { collection: "products", q: "milk", query_by: "name", per_page: 5 },
-    { collection: "brands",   q: "mil",  query_by: "name", per_page: 3 }
+    { collection: "books", q: "milk", query_by: "name", per_page: 5 },
+    { collection: "authors", q: "mil", query_by: "name", per_page: 3 }
   ],
   url_opts: { use_cache: true, cache_ttl: 30 }
 )
+```
 
-# Top-level convenience returning raw
-SearchEngine.multi_search_raw(common: { query_by: SearchEngine.config.default_query_by }) do |m|
-  m.add :products, Product.per(5)
-  m.add :brands,   Brand.per(3)
+You can also instantiate `SearchEngine::Client` directly when you need a specific
+instance:
+
+```ruby
+client = SearchEngine::Client.new
+client.search(collection: "books", params: { q: "milk", query_by: "name" },
+              url_opts: { use_cache: true })
+```
+
+Top-level convenience returning raw:
+
+```ruby
+SearchEngine.multi_search_raw(
+  common: { query_by: SearchEngine.config.default_query_by }
+) do |m|
+  m.add :books, SearchEngine::Book.per(5)
+  m.add :authors, SearchEngine::Author.per(3)
 end
 
 # Clear server-side cache (Typesense `/operations/cache/clear`)
@@ -47,8 +66,12 @@ end
 
 ### Cache management
 
-- <code>SearchEngine::Cache.clear</code> issues a <code>POST /operations/cache/clear</code> via the client and returns the symbolized Typesense response. Call it after large imports or schema changes when you need fresh cached results immediately.
-- Emits <code>search_engine.cache.clear</code> (see <a href="/projects/search-engine-for-typesense/observability">Observability</a>) so subscribers/loggers capture cadence and duration; uses the injected client from <code>SearchEngine.config.client</code> when present.
+- <code>SearchEngine::Cache.clear</code> issues a <code>POST /operations/cache/clear</code>
+  via the client and returns the symbolized Typesense response. Call it after
+  large imports or schema changes when you need fresh cached results immediately.
+- Emits <code>search_engine.cache.clear</code> (see <a href="/projects/search-engine-for-typesense/observability">Observability</a>)
+  so subscribers/loggers capture cadence and duration; uses <code>SearchEngine.client</code>
+  so injected clients and test mode are honored.
 - Reference: <a href="https://typesense.org/docs/29.0/api/cluster-operations.html#clear-cache" target="_blank">Typesense cluster operations → Clear cache</a>.
 
 ### Operations helper (`SearchEngine.operations`)
@@ -61,8 +84,22 @@ SearchEngine.operations.stats     # GET /stats.json
 SearchEngine.operations.health    # GET /health
 ```
 
-- Accepts optional `client:` for dependency injection; otherwise uses the configured client or builds a new one.
+- Accepts optional `client:` for dependency injection; otherwise uses
+  `SearchEngine.client` (respects injected clients, test mode, or builds a new
+  instance).
 - Emits `search_engine.operations.*` events; payloads are redacted and safe for dashboards/health checks.
+
+### Client helper (`SearchEngine.client`)
+
+Use `SearchEngine.client` to access the configured client instance. It follows
+this precedence:
+
+1. Returns `SearchEngine.config.client` if explicitly set (e.g., `StubClient`)
+2. Returns `SearchEngine::Test::OfflineClient` if `test_mode?` is true
+3. Otherwise creates and returns a new `SearchEngine::Client` instance
+
+This helper ensures consistent client access across the codebase and respects
+test mode automatically.
 
 ### Request flow
 

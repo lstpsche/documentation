@@ -1,15 +1,21 @@
 ---
 title: "Testing"
-description: "Run the search layer fully offline with a stub client and assert on unified events and compiled params safely."
+description: "Run the search layer offline with the default test client or a stub for assertions."
 ---
 
-Related: <a href="/projects/search-engine-for-typesense/observability">Observability</a>, <a href="/projects/search-engine-for-typesense/dx">DX</a>, <a href="/projects/search-engine-for-typesense/client">Client</a>
+Related: <a href="/projects/search-engine-for-typesense/observability">Observability</a>,
+<a href="/projects/search-engine-for-typesense/dx">DX</a>,
+<a href="/projects/search-engine-for-typesense/client">Client</a>,
+<a href="/projects/search-engine-for-typesense/troubleshooting">Troubleshooting</a>
 
-Test-only helpers to run the search layer fully offline and write ergonomic assertions against unified events and compiled params.
+Test-only helpers to run the search layer offline (no I/O by default) and write
+ergonomic assertions against unified events and compiled params.
 
 ## Quick start
 
-- Enable the stub client in your test setup:
+The engine automatically uses an offline client in test mode (Rails test
+environment or `RACK_ENV=test`). For programmable responses, enable the stub
+client:
 
 ```ruby
 # test_helper.rb or spec_helper.rb
@@ -23,7 +29,7 @@ end
 - Queue responses and inspect captured calls:
 
 ```ruby
-stub = SearchEngine.config.client
+stub = SearchEngine.client
 stub.enqueue_response(:search, { 'hits' => [], 'found' => 0, 'out_of' => 0 })
 
 # your relation execution here ...
@@ -40,6 +46,12 @@ first.redacted_body # => redacted subset for safe logs
 ```ruby
 stub.enqueue_response(:search, ->(req) { { 'hits' => [], 'found' => 42, 'out_of' => 42 } })
 stub.enqueue_response(:multi_search, RuntimeError.new('boom'))
+```
+
+- Use the `SearchEngine.client` helper to access the configured client:
+
+```ruby
+client = SearchEngine.client  # Returns StubClient, OfflineClient, or Client
 ```
 
 ## Event assertions
@@ -69,6 +81,33 @@ expect(rel.to_params_json).to include("filter_by")
 ```
 
 See also: <code>Relation#to_params_json</code>, <code>Relation#to_curl</code>, and <code>Relation#dry_run!</code>.
+
+## Test mode and offline client
+
+The engine automatically enables test mode when running in Rails test environment
+or when `RACK_ENV=test` is set. In test mode, `SearchEngine.client` returns a
+no-op `SearchEngine::Test::OfflineClient` that avoids network I/O and returns
+safe empty responses.
+
+### Environment overrides
+
+You can control test mode via environment variables:
+
+- `SEARCH_ENGINE_TEST_MODE=1` or `SEARCH_ENGINE_TEST_MODE=0` (explicit override)
+- `SEARCH_ENGINE_OFFLINE=1` or `SEARCH_ENGINE_OFFLINE=0` (legacy alias)
+
+When `SearchEngine.config.client` is explicitly set (e.g., `StubClient`), it
+always takes precedence over automatic offline mode.
+
+### OfflineClient behavior
+
+`SearchEngine::Test::OfflineClient` implements all client methods but performs
+no network I/O:
+
+- `search` returns empty results (`found: 0`)
+- `multi_search` returns empty results array
+- `import_documents` returns success JSONL
+- All other operations return safe empty responses
 
 ## Offline strategy & safety
 

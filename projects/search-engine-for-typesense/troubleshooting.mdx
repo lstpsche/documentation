@@ -83,7 +83,19 @@ Related: <a href="/projects/search-engine-for-typesense/observability">Observabi
 
 - Stub not capturing calls
   - Ensure <code>SearchEngine.config.client = SearchEngine::Test::StubClient.new</code>
+  - Explicit `SearchEngine.config.client` always takes precedence over offline
+    mode
   - See <a href="/projects/search-engine-for-typesense/testing#quick-start">Testing → Quick start</a>
+- Test mode not working as expected
+  - Verify `test_mode` is enabled: `SearchEngine.config.test_mode?` should return
+    `true` in test environment
+  - Check environment: `Rails.env.test?` or `RACK_ENV=test` enables test mode
+    automatically
+  - Override via `SEARCH_ENGINE_TEST_MODE=1` or `SEARCH_ENGINE_OFFLINE=1`
+    (legacy alias)
+  - Use `SearchEngine.client` to access the configured client instance
+  - Note: if `SearchEngine.config.client` is explicitly set, it always wins
+  - See <a href="/projects/search-engine-for-typesense/testing#test-mode-and-offline-client">Testing → Test mode</a>
 
 ## Observability
 

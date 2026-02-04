@@ -35,7 +35,9 @@ See: <a href="/projects/search-engine-for-typesense/schema">Schema</a>, <a href=
 - Physical naming: "&lt;logical&gt;_YYYYMMDD_HHMMSS_###" (timestamp + sequence). Logical name is stable and exposed via alias (e.g., <code>products</code>).
 - Diff compares compiled vs live (aliased physical): fields, types, and selected options. Intentionally immutable aspects (e.g., field type narrowing) are flagged for safe migration.
 - Apply creates a new physical collection; reindex populates it; failures leave the alias untouched for inspection.
-- Validation before swap: sample queries, mapping sanity, counts/order checks on key paths. Prefer <code>dry_run!</code> and the offline stub client for exploratory checks.
+- Validation before swap: sample queries, mapping sanity, counts/order checks on
+  key paths. Prefer <code>dry_run!</code> and the offline client (or stub client)
+  for exploratory checks.
 - Alias swap: traffic moves atomically to the new physical via an upsert; old physicals remain per retention.
 - Rollback: re‑point alias to prior retained physical if available; consider documents indexed after the swap window.
 - Observability hooks (predictive): <code>search_engine.schema.diff</code>, <code>search_engine.schema.apply</code>, <code>search_engine.alias.swap</code> (swap often occurs within <code>schema.apply</code>). See <a href="/projects/search-engine-for-typesense/observability">Observability</a>.

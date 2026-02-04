@@ -1,6 +1,6 @@
 ---
 title: "Observability + DX + Testing"
-description: "How unified events, logging, DX helpers, and the stub client fit together for safe introspection and robust tests."
+description: "How unified events, logging, DX helpers, and offline/stub clients fit together."
 ---
 
 This page ties together Observability, DX helpers, and Testing patterns for a cohesive workflow.
@@ -27,9 +27,13 @@ See: <a href="/projects/search-engine-for-typesense/dx">DX</a>
 
 ## Testing offline
 
-- Stub client: <code>SearchEngine::Test::StubClient</code>
-- Queue responses per verb and assert on captured calls (URL, redaction flags, redacted body)
+- Automatic offline mode: `SearchEngine.client` returns
+  `SearchEngine::Test::OfflineClient` in test mode (Rails test or `RACK_ENV=test`)
+- Stub client: <code>SearchEngine::Test::StubClient</code> for programmable responses
+- Queue responses per verb and assert on captured calls
+  (URL, redaction flags, redacted body)
 - Event assertions with RSpec or Minitest helpers
+- Use `SearchEngine.client` to access the configured client instance
 
 See: <a href="/projects/search-engine-for-typesense/testing">Testing</a>
 
@@ -46,7 +50,10 @@ puts rel.explain
 events = capture_events { rel.to_a }
 
 # Testing: stub and enqueue
-stub = SearchEngine.config.client
+SearchEngine.configure do |c|
+  c.client = SearchEngine::Test::StubClient.new
+end
+stub = SearchEngine.client
 stub.enqueue_response(:search, { 'hits' => [], 'found' => 0, 'out_of' => 0 })
 rel.to_a
 ```

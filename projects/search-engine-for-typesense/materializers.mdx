@@ -48,7 +48,7 @@ sequenceDiagram
 ### Examples
 
 ```ruby
-client = SearchEngine::Client.new
+client = SearchEngine.client
 result = client.search(collection: "books", params: { q: "milk", query_by: "name" })
 result.found  # => 10
 result.out_of # => 1000

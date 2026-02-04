@@ -388,8 +388,8 @@ SearchEngine::Bulk.index_collections(:products, :brands)
 # Destructive reindex of a subset with an injected client
 SearchEngine::Bulk.reindex_collections!(
   SearchEngine::Book,
-  "publishers",
-  client: SearchEngine::Client.new
+  "authors",
+  client: SearchEngine.client
 )
 ```
 
@@ -419,7 +419,7 @@ SearchEngine::Bulk.index_all
 SearchEngine::Bulk.reindex_all!
 
 # Optional client override
-SearchEngine::Bulk.index_all(client: SearchEngine::Client.new)
+SearchEngine::Bulk.index_all(client: SearchEngine.client)
 ```
 
 Notes:
