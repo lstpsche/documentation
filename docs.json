@@ -214,12 +214,12 @@
   "navbar": {
     "links": [
       {
-        "label": "My GitHub",
+        "label": "GitHub",
         "icon": "github",
         "href": "https://github.com/lstpsche"
       },
       {
-        "label": "My LinkedIn",
+        "label": "LinkedIn",
         "icon": "linkedin",
         "href": "https://www.linkedin.com/in/lstpsche"
       }
