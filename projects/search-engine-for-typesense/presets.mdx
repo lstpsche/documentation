@@ -177,7 +177,7 @@ Example (reused):
 ```ruby
 res = SearchEngine.multi_search do |m|
   m.add :books, SearchEngine::Book.preset(:popular_products).per(5)
-  m.add :brands,   SearchEngine::Publisher.preset(:brand_popularity, mode: :only).per(3)
+  m.add :publishers,   SearchEngine::Publisher.preset(:brand_popularity, mode: :only).per(3)
 end
 ```
 

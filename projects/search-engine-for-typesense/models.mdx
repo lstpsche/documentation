@@ -384,6 +384,7 @@ class SearchEngine::Article < SearchEngine::Base
   attribute :title, :string, sort: true, optional: false, infix: true
   attribute :tags,  [:string], empty_filtering: true
   attribute :name,  :string, locale: "en"
+  attribute :category, :string, facet: true
   attribute :published, :boolean
 end
 ```
@@ -423,6 +424,7 @@ Supported options and constraints:
 - <code>optional: true|false</code> — marks field optional; enables <code>&lt;name&gt;_blank</code> flag in schema.
 - <code>infix: true|false</code> — enable Typesense infix for this field in schema.
 - <code>empty_filtering: true|false</code> — only for array types (e.g., <code>[:string]</code>); enables <code>&lt;name&gt;_empty</code> hidden field for safe empty‑array filtering.
+- <code>facet: true|false</code> — mark field as facetable in schema for faceted search/filtering.
 - <code>index: true|false</code> — when <code>false</code>, the field is omitted from the compiled Typesense schema. You may still send the field in documents; Typesense stores it and returns it with hits, but it is not indexed in memory. Nested subfields under an unindexed base object are also omitted from schema.
 
 Example (display‑only attribute that is not indexed):

@@ -16,15 +16,15 @@ This page covers how to manage synonym and stopword sets and how to control thei
 Use the admin helpers to upsert sets per collection.
 
 ```ruby
-SearchEngine::Admin::Synonyms.upsert!(collection: "products", id: "colors", terms: %w[color colour])
-SearchEngine::Admin::Stopwords.upsert!(collection: "products", id: "common", terms: %w[the and])
+SearchEngine::Admin::Synonyms.upsert!(collection: "books", id: "colors", terms: %w[color colour])
+SearchEngine::Admin::Stopwords.upsert!(collection: "books", id: "common", terms: %w[the and])
 ```
 
 Optional helpers for CLI:
 
-- `SearchEngine::Admin::Synonyms.list(collection: "products")`
-- `SearchEngine::Admin::Synonyms.get(collection: "products", id: "colors")`
-- `SearchEngine::Admin::Synonyms.delete!(collection: "products", id: "colors")`
+- `SearchEngine::Admin::Synonyms.list(collection: "books")`
+- `SearchEngine::Admin::Synonyms.get(collection: "books", id: "colors")`
+- `SearchEngine::Admin::Synonyms.delete!(collection: "books", id: "colors")`
 - `SearchEngine::Admin::Stopwords.list(...)`, `get(...)`, `delete!(...)`
 
 Normalization rules:
@@ -45,7 +45,7 @@ Schema (stable):
 
 ```json
 {
-  "collection": "products",
+  "collection": "books",
   "kind": "synonyms",
   "updated_at": "2025-01-01T00:00:00Z",
   "items": [

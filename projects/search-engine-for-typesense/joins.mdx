@@ -62,10 +62,10 @@ class SearchEngine::Order < SearchEngine::Base
 
   # Reference fields must be :string or [:string]
   attribute :customer_id, :string
-  attribute :product_ids, [:string]  # Array of references
+  attribute :book_ids, [:string]  # Array of references
 
   belongs_to :customer, local_key: :customer_id
-  belongs_to_many :products, local_key: :product_ids
+  belongs_to_many :books, local_key: :book_ids
 end
 ```
 

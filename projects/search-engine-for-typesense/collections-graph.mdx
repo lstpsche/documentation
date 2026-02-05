@@ -34,13 +34,13 @@ SearchEngine.collections_graph(style: :ascii)                # ASCII only
 ```
 Collections Graph (nodes: N, edges: M)
 
-┌──────────┐                          ┌─────────┐
-│ products │  ── via brand_id → id ── │ brands  │
-└──────────┘                          └─────────┘
+┌──────────┐                          ┌─────────────┐
+│ books    │  ── via publisher_id → id ── │ publishers │
+└──────────┘                          └─────────────┘
 
-┌──────────┐                                ┌────────────┐
-│ products │  ── via promotion_ids → id ──  │ promotions │
-└──────────┘                                └────────────┘
+┌──────────┐                                ┌─────────┐
+│ books    │  ── via author_ids → id ──  │ authors │
+└──────────┘                                └─────────┘
 
 Isolated: …
 Cycles: none
@@ -49,9 +49,9 @@ Cycles: none
 ### Output (compact)
 ```
 Collections Graph (nodes: N, edges: M)
-- products
-  └─ ▶ brands       [via brand_id -> id]
-  └─ ▶ promotions   [via promotion_ids -> id]
+- books
+  └─ ▶ publishers   [via publisher_id -> id]
+  └─ ▶ authors      [via author_ids -> id]
 Isolated: …
 Cycles: none
 ```
@@ -68,8 +68,8 @@ Use the returned <code>mermaid</code> string to embed diagrams in docs:
 
 ```mermaid
 flowchart LR
-  A["products"] -- "brand_id -> id" --> B["brands"]
-  A -- "promotion_ids -> id" --> C["promotions"]
+  A["books"] -- "publisher_id -> id" --> B["publishers"]
+  A -- "author_ids -> id" --> C["authors"]
 ```
 
 You can also render images locally via <code>@mermaid-js/mermaid-cli</code>:

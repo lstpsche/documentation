@@ -174,7 +174,7 @@ Send two labeled relations in one round‑trip.
 ```ruby
 res = SearchEngine.multi_search do |m|
   m.add :books, SearchEngine::Book.where(category: "dairy").per(5)
-  m.add :brands,   SearchEngine::Publisher.where(["name PREFIX ?", "mil"]).per(3)
+  m.add :publishers,   SearchEngine::Publisher.where(["name PREFIX ?", "mil"]).per(3)
 end
 ```
 

@@ -8,7 +8,7 @@ Related: <a href="/projects/search-engine-for-typesense/schema">Schema</a>, <a h
 Use this page when you need to reindex a collection with schema changes.
 
 <Note>
-  Examples assume the <code>SearchEngine::Product</code> model from <a href="/projects/search-engine-for-typesense/guidebook-model-configuration">Model configuration</a>.
+  Examples assume the <code>SearchEngine::Book</code> model from <a href="/projects/search-engine-for-typesense/guidebook-model-configuration">Model configuration</a>.
 </Note>
 
 ## Fastest ways to reindex
@@ -16,15 +16,15 @@ Use this page when you need to reindex a collection with schema changes.
 <Steps>
 <Step title="CLI (safe blue/green)">
   ```bash
-  rails 'search_engine:schema:apply[products]'
-  rails 'search_engine:schema:rollback[products]'
+  rails 'search_engine:schema:apply[books]'
+  rails 'search_engine:schema:rollback[books]'
   ```
 </Step>
 
 <Step title="Ruby (auto fix drift)">
   ```ruby
-  SearchEngine::Product.index_collection(pre: :index)
-  SearchEngine::Bulk.index_collections(:products, :brands)
+  SearchEngine::Book.index_collection(pre: :index)
+  SearchEngine::Bulk.index_collections(:books, :publishers)
   ```
 </Step>
 </Steps>
@@ -37,7 +37,7 @@ Use this page when you need to reindex a collection with schema changes.
 ## Destructive reindex (only if safe)
 
 ```ruby
-SearchEngine::Product.reindex_collection!
+SearchEngine::Book.reindex_collection!
 SearchEngine::Bulk.reindex_all!
 ```
 
@@ -46,7 +46,7 @@ SearchEngine::Bulk.reindex_all!
 Keep a limited number of old physical collections after swaps:
 
 ```ruby
-class SearchEngine::Product < SearchEngine::Base
+class SearchEngine::Book < SearchEngine::Base
   schema_retention keep_last: 2
 end
 ```

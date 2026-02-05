@@ -8,13 +8,13 @@ Related: <a href="/projects/search-engine-for-typesense/relation">Relation</a>, 
 Use this page when you need to search and filter data from a collection.
 
 <Note>
-  Examples assume the <code>SearchEngine::Product</code> model from <a href="/projects/search-engine-for-typesense/guidebook-model-configuration">Model configuration</a>.
+  Examples assume the <code>SearchEngine::Book</code> model from <a href="/projects/search-engine-for-typesense/guidebook-model-configuration">Model configuration</a>.
 </Note>
 
 ## Basic search
 
 ```ruby
-SearchEngine::Product
+SearchEngine::Book
   .search("running shoes")
   .order(price: :asc)
   .page(1)
@@ -25,10 +25,10 @@ SearchEngine::Product
 ## Filtering patterns
 
 ```ruby
-SearchEngine::Product.where(brand_id: "brand_1", tags: ["sale", "new"])
-SearchEngine::Product.where(["price >= ?", 100])
-SearchEngine::Product.where("price:>=100 && tags:=[\"sale\"]")
-SearchEngine::Product.where.not(status: "archived")
+SearchEngine::Book.where(publisher_id: "publisher_1", tags: ["sale", "new"])
+SearchEngine::Book.where(["price >= ?", 100])
+SearchEngine::Book.where("price:>=100 && tags:=[\"sale\"]")
+SearchEngine::Book.where.not(status: "archived")
 ```
 
 <Note>
@@ -38,7 +38,7 @@ SearchEngine::Product.where.not(status: "archived")
 ## Select only what you need
 
 ```ruby
-SearchEngine::Product
+SearchEngine::Book
   .include_fields(:sku, :name, :price)
   .exclude(:internal_notes)
 ```
@@ -46,8 +46,8 @@ SearchEngine::Product
 ## Pagination and limits
 
 ```ruby
-SearchEngine::Product.page(2).per(25)
-SearchEngine::Product.limit(50) # fallback when page/per are not set
+SearchEngine::Book.page(2).per(25)
+SearchEngine::Book.limit(50) # fallback when page/per are not set
 ```
 
 ## Next steps

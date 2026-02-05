@@ -9,14 +9,14 @@ Use this page when you are defining a new SearchEngine model or expanding an exi
 
 ## Define the collection and fields
 
-```ruby app/search_engine/product.rb
-class SearchEngine::Product < SearchEngine::Base
-  collection :products
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  collection :books
 
   attribute :sku, :string
   attribute :name, :string, sort: true
   attribute :description, :string
-  attribute :brand_id, :string
+  attribute :publisher_id, :string
   attribute :price, :float
   attribute :tags, [:string], empty_filtering: true
   attribute :store, :object, nested: { name: :string, city: :string }
@@ -29,8 +29,8 @@ end
 
 ## Set identity and defaults
 
-```ruby app/search_engine/product.rb
-class SearchEngine::Product < SearchEngine::Base
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
   # ... attributes ...
   identify_by :sku
   query_by :name, :description
@@ -46,8 +46,8 @@ end
 
 Use <code>:object</code> or <code>[:object]</code> with <code>nested:</code> to define subfields.
 
-```ruby app/search_engine/product.rb
-class SearchEngine::Product < SearchEngine::Base
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
   attribute :retail_prices, [:object], nested: {
     current_price: :float,
     price_type: :string

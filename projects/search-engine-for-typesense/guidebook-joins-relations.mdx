@@ -9,32 +9,32 @@ Use this page when you need to join across collections or model relationships.
 
 ## Declare associations
 
-```ruby app/search_engine/brand.rb
-class SearchEngine::Brand < SearchEngine::Base
-  collection :brands
-  attribute :brand_id, :string
+```ruby app/search_engine/publisher.rb
+class SearchEngine::Publisher < SearchEngine::Base
+  collection :publishers
+  attribute :publisher_id, :string
   attribute :name, :string
 
-  identify_by :brand_id
+  identify_by :publisher_id
 end
 ```
 
-```ruby app/search_engine/product.rb
-class SearchEngine::Product < SearchEngine::Base
-  collection :products
-  attribute :brand_id, :string
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  collection :books
+  attribute :publisher_id, :string
   attribute :name, :string
 
-  belongs_to :brand
+  belongs_to :publisher
 end
 ```
 
 ## Query across collections
 
 ```ruby
-SearchEngine::Product
-  .joins(:brand)
-  .where(brand: { name: "Acme" })
+SearchEngine::Book
+  .joins(:publisher)
+  .where(publisher: { name: "Acme" })
   .to_a
 ```
 

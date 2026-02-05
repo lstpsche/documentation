@@ -22,12 +22,12 @@ Federate multiple labeled <code>Relation</code>s into a single Typesense multi-s
 ```ruby
 res = SearchEngine.multi_search(common: { query_by: SearchEngine.config.default_query_by }) do |m|
   m.add :books, Book.where(category_id: 5).select(:id, :name).per(10)
-  m.add :brands,   Publisher.where('name:~rud').per(5)
+  m.add :publishers,   Publisher.where('name:~rud').per(5)
 end
 
 res[:books].found
-res.dig(:brands).to_a
-res.labels #=> [:books, :brands]
+res.dig(:publishers).to_a
+res.labels #=> [:books, :publishers]
 ```
 
 ### Label rules
@@ -46,7 +46,7 @@ Example:
 ```ruby
 res = SearchEngine.multi_search(common: { q: 'milk', per_page: 50 }) do |m|
   m.add :books, Book.all.per(10) # per_page: 10 overrides common 50
-  m.add :brands,   Publisher.all           # per_page not present, inherits 50
+  m.add :publishers,   Publisher.all           # per_page not present, inherits 50
 end
 ```
 
@@ -127,10 +127,10 @@ flowchart TD
 Usage (shape matches the default helper):
 
 ```ruby
-mr = SearchEngine.multi_search_result { |m| m.add :books, rel1; m.add :brands, rel2 }
+mr = SearchEngine.multi_search_result { |m| m.add :books, rel1; m.add :publishers, rel2 }
 mr[:books].found
-mr.dig(:brands).to_a
-mr.labels # => [:books, :brands]
+mr.dig(:publishers).to_a
+mr.labels # => [:books, :publishers]
 ```
 
 ### URL opts, caching, and limits
@@ -146,7 +146,7 @@ If you prefer the raw response returned by the Typesense client, use:
 ```ruby
 raw = SearchEngine.multi_search_raw(common: { query_by: SearchEngine.config.default_query_by }) do |m|
   m.add :books, Book.where(category_id: 5).per(10)
-  m.add :brands,   Publisher.where('name:~rud').per(5)
+  m.add :publishers,   Publisher.where('name:~rud').per(5)
 end
 ```
 
@@ -196,7 +196,7 @@ Redaction policy: payload does not include per-search bodies, <code>q</code>, or
 Example compact log line shape:
 
 ```text
-[se.multi] count=2 labels=products,brands status=200 duration=12.3ms cache=true ttl=60
+[se.multi] count=2 labels=products,publishers status=200 duration=12.3ms cache=true ttl=60
 ```
 
 

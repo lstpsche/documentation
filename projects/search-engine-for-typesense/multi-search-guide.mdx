@@ -18,7 +18,7 @@ Required verbatim example:
 ```ruby
 res = SearchEngine.multi_search(common: { query_by: SearchEngine.config.default_query_by }) do |m|
   m.add :books, SearchEngine::Book.where(category_id: 5).per(5)
-  m.add :brands,   SearchEngine::Publisher.where("name:~rud").per(3)
+  m.add :publishers,   SearchEngine::Publisher.where("name:~rud").per(3)
 end
 res[:books].to_a
 ```
@@ -29,14 +29,14 @@ Minimal variations:
   ```ruby
   res = SearchEngine.multi_search(common: { q: "milk", per_page: 50, query_by: SearchEngine.config.default_query_by }) do |m|
     m.add :books, SearchEngine::Book.all.per(10) # per_page=10 overrides common 50
-    m.add :brands,   SearchEngine::Publisher.all            # inherits per_page=50
+    m.add :publishers,   SearchEngine::Publisher.all            # inherits per_page=50
   end
   ```
 - Add field selection per search:
   ```ruby
   res = SearchEngine.multi_search(common: { q: "*", query_by: SearchEngine.config.default_query_by }) do |m|
     m.add :books, SearchEngine::Book.select(:id, :name).per(6)
-    m.add :brands,   SearchEngine::Publisher.select(:id).per(3)
+    m.add :publishers,   SearchEngine::Publisher.select(:id).per(3)
   end
   ```
 
@@ -57,7 +57,7 @@ Example (per‑search <code>query_by</code> and <code>filters</code> override <c
 ```ruby
 res = SearchEngine.multi_search(common: { q: params[:q].presence || "*", query_by: SearchEngine.config.default_query_by }) do |m|
   m.add :books, SearchEngine::Book.where(active: true).options(query_by: "name,description").per(6)
-  m.add :brands,   SearchEngine::Publisher.where(["name PREFIX ?", params[:q].to_s.first(12)]).per(3)
+  m.add :publishers,   SearchEngine::Publisher.where(["name PREFIX ?", params[:q].to_s.first(12)]).per(3)
 end
 ```
 
@@ -80,20 +80,20 @@ Example with <code>MultiResult</code> directly:
 ```ruby
 mr = SearchEngine.multi_search_result(common: { q: params[:q].presence || "*", query_by: SearchEngine.config.default_query_by }) do |m|
   m.add :books, SearchEngine::Book.per(6)
-  m.add :brands,   SearchEngine::Publisher.per(3)
+  m.add :publishers,   SearchEngine::Publisher.per(3)
 end
 
 products = mr[:books]
-brands   = mr[:brands]
+publishers   = mr[:publishers]
 
 count = products&.found.to_i
-empty = brands&.empty?
+empty = publishers&.empty?
 ```
 
 Partial failures: if Typesense returns per‑entry error statuses inside a 200 response, inspect <code>entry.raw</code> to branch UI gracefully (avoid raising globally):
 
 ```ruby
-entry = mr[:brands]
+entry = mr[:publishers]
 if (code = entry&.raw&.fetch("code", 200).to_i) != 200
   # render a soft error for this box, keep other boxes
 else
@@ -115,11 +115,11 @@ class HomeController < ApplicationController
     common = { q: q.presence || "*", query_by: SearchEngine.config.default_query_by }
 
     books_rel = SearchEngine::Book.where(active: true).per(6)
-    brands_rel   = SearchEngine::Publisher.where(["name PREFIX ?", q.first(24)]).per(3)
+    publishers_rel   = SearchEngine::Publisher.where(["name PREFIX ?", q.first(24)]).per(3)
 
     @results = SearchEngine.multi_search_result(common: common) do |m|
       m.add :books, books_rel
-      m.add :brands,   brands_rel
+      m.add :publishers,   publishers_rel
     end
 
     # Suggested fragment cache key derived from stable URL inputs

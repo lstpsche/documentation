@@ -61,7 +61,7 @@ Unified events are emitted via ActiveSupport::Notifications. Capture them for a 
 - RSpec matcher:
 
 ```ruby
-expect { rel.to_a }.to emit_event("search_engine.search").with(hash_including(collection: "products"))
+expect { rel.to_a }.to emit_event("search_engine.search").with(hash_including(collection: "books"))
 ```
 
 - Minitest helpers:
@@ -69,7 +69,7 @@ expect { rel.to_a }.to emit_event("search_engine.search").with(hash_including(co
 ```ruby
 include SearchEngine::Test::MinitestAssertions
 
-assert_emits("search_engine.search", payload: ->(p) { p[:collection] == "products" }) { rel.to_a }
+assert_emits("search_engine.search", payload: ->(p) { p[:collection] == "books" }) { rel.to_a }
 
 events = capture_events { rel.to_a }
 ```

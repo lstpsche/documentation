@@ -383,7 +383,7 @@ sequenceDiagram
 
 ```ruby
 # Blue/green selected collections
-SearchEngine::Bulk.index_collections(:products, :brands)
+SearchEngine::Bulk.index_collections(:books, :publishers)
 
 # Destructive reindex of a subset with an injected client
 SearchEngine::Bulk.reindex_collections!(
@@ -522,8 +522,8 @@ one rule; cleanup runs them with OR semantics and uses the same compiled filter 
 <code>Indexer.delete_stale!</code>.
 
 ```ruby
-class SearchEngine::Product < SearchEngine::Base
-  collection "products"
+class SearchEngine::Book < SearchEngine::Base
+  collection "books"
 
   index do
     stale scope: :archived              # reuse a model scope (must return a Relation)
@@ -545,11 +545,11 @@ Runtime cleanup is available directly on the model:
 
 ```ruby
 # Deletes documents matching any declared stale rules
-SearchEngine::Product.cleanup
-SearchEngine::Product.cleanup(partition: 42)
-SearchEngine::Product.cleanup(into: "products_20251011_120000_001")
+SearchEngine::Book.cleanup
+SearchEngine::Book.cleanup(partition: 42)
+SearchEngine::Book.cleanup(into: "books_20251011_120000_001")
 # Clear Typesense cache after cleanup
-SearchEngine::Product.cleanup(clear_cache: true)
+SearchEngine::Book.cleanup(clear_cache: true)
 ```
 
 <code>SearchEngine::Base.cleanup</code> delegates to <code>SearchEngine::Deletion.delete_by</code>, emitting the same <code>search_engine.indexer.delete_stale</code> instrumentation. When no stale configuration exists, it logs a skip and returns <code>0</code>.

@@ -128,7 +128,7 @@ Insert:
 ```ruby
 res = SearchEngine.multi_search do |m|
   m.add :books, SearchEngine::Book.curate(pin: %w[p_1 p_2])
-  m.add :brands,   SearchEngine::Publisher.curate(hide: %w[b9 b10], filter_curated_hits: true)
+  m.add :publishers,   SearchEngine::Publisher.curate(hide: %w[b9 b10], filter_curated_hits: true)
 end
 ```
 

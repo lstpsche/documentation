@@ -21,14 +21,14 @@ Use this page when you need the quickest way to index a collection.
 <Steps>
 <Step title="CLI (single collection)">
   ```bash
-  rails 'search_engine:index:rebuild[products]'
+  rails 'search_engine:index:rebuild[books]'
   ```
 </Step>
 
 <Step title="Ruby (single or multiple collections)">
   ```ruby
-  SearchEngine::Product.index_collection
-  SearchEngine::Bulk.index_collections(:products, :brands)
+  SearchEngine::Book.index_collection
+  SearchEngine::Bulk.index_collections(:books, :publishers)
   SearchEngine::Bulk.index_all
   ```
 
@@ -40,8 +40,8 @@ Use this page when you need the quickest way to index a collection.
 
 ## Optional: auto-sync on changes
 
-```ruby app/models/product.rb
-class Product < ApplicationRecord
+```ruby app/models/book.rb
+class Book < ApplicationRecord
   include SearchEngine::ActiveRecordSyncable
 
   search_engine_syncable on: %i[create update destroy]
