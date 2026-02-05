@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "willow",
+  "theme": "almond",
   "name": "lstpsche docs",
   "colors": {
     "primary": "#16A34A",
@@ -12,94 +12,193 @@
     "tabs": [
       {
         "tab": "SearchEngine for Typesense",
-        "groups": [
+        "versions": [
           {
-            "group": "Overview",
-            "pages": [
-              "projects/search-engine-for-typesense/index",
-              "projects/search-engine-for-typesense/quickstart",
-              "projects/search-engine-for-typesense/installation",
-              "projects/search-engine-for-typesense/configuration",
-              "projects/search-engine-for-typesense/roadmap"
+            "version": "30.1",
+            "groups": [
+              {
+                "group": "Overview",
+                "pages": [
+                  "projects/search-engine-for-typesense/v30.1/index",
+                  "projects/search-engine-for-typesense/v30.1/quickstart",
+                  "projects/search-engine-for-typesense/v30.1/installation",
+                  "projects/search-engine-for-typesense/v30.1/configuration",
+                  "projects/search-engine-for-typesense/v30.1/roadmap"
+                ]
+              },
+              {
+                "group": "Guidebook",
+                "pages": [
+                  "projects/search-engine-for-typesense/v30.1/guidebook",
+                  "projects/search-engine-for-typesense/v30.1/guidebook-model-configuration",
+                  "projects/search-engine-for-typesense/v30.1/guidebook-indexing",
+                  "projects/search-engine-for-typesense/v30.1/guidebook-reindexing",
+                  "projects/search-engine-for-typesense/v30.1/guidebook-searching-filtering",
+                  "projects/search-engine-for-typesense/v30.1/guidebook-joins-relations",
+                  "projects/search-engine-for-typesense/v30.1/guidebook-scopes-advanced-orm",
+                  "projects/search-engine-for-typesense/v30.1/query-dsl",
+                  "projects/search-engine-for-typesense/v30.1/compiler",
+                  "projects/search-engine-for-typesense/v30.1/references-joins-deep-dive",
+                  "projects/search-engine-for-typesense/v30.1/joins-selection-grouping",
+                  "projects/search-engine-for-typesense/v30.1/cascading"
+                ]
+              },
+              {
+                "group": "Guides",
+                "pages": [
+                  "projects/search-engine-for-typesense/v30.1/models",
+                  "projects/search-engine-for-typesense/v30.1/relation",
+                  "projects/search-engine-for-typesense/v30.1/joins",
+                  "projects/search-engine-for-typesense/v30.1/field-selection",
+                  "projects/search-engine-for-typesense/v30.1/grouping",
+                  "projects/search-engine-for-typesense/v30.1/faceting",
+                  "projects/search-engine-for-typesense/v30.1/highlighting",
+                  "projects/search-engine-for-typesense/v30.1/ranking",
+                  "projects/search-engine-for-typesense/v30.1/hit-limits",
+                  "projects/search-engine-for-typesense/v30.1/presets",
+                  "projects/search-engine-for-typesense/v30.1/curation",
+                  "projects/search-engine-for-typesense/v30.1/materializers",
+                  "projects/search-engine-for-typesense/v30.1/collections-graph",
+                  "projects/search-engine-for-typesense/v30.1/cookbook-queries",
+                  "projects/search-engine-for-typesense/v30.1/synonyms-stopwords",
+                  "projects/search-engine-for-typesense/v30.1/deferred-typesense-features"
+                ]
+              },
+              {
+                "group": "API",
+                "pages": [
+                  "projects/search-engine-for-typesense/v30.1/client",
+                  "projects/search-engine-for-typesense/v30.1/relation-reference",
+                  "projects/search-engine-for-typesense/v30.1/schema",
+                  "projects/search-engine-for-typesense/v30.1/indexer",
+                  "projects/search-engine-for-typesense/v30.1/multi-search",
+                  "projects/search-engine-for-typesense/v30.1/multi-search-guide",
+                  "projects/search-engine-for-typesense/v30.1/deletion",
+                  "projects/search-engine-for-typesense/v30.1/update",
+                  "projects/search-engine-for-typesense/v30.1/upsert",
+                  "projects/search-engine-for-typesense/v30.1/active-record-syncable"
+                ]
+              },
+              {
+                "group": "CLI & DX",
+                "pages": [
+                  "projects/search-engine-for-typesense/v30.1/cli",
+                  "projects/search-engine-for-typesense/v30.1/dx",
+                  "projects/search-engine-for-typesense/v30.1/tuit"
+                ]
+              },
+              {
+                "group": "Operations & Testing",
+                "pages": [
+                  "projects/search-engine-for-typesense/v30.1/observability",
+                  "projects/search-engine-for-typesense/v30.1/observability-dx-testing",
+                  "projects/search-engine-for-typesense/v30.1/debugging",
+                  "projects/search-engine-for-typesense/v30.1/testing",
+                  "projects/search-engine-for-typesense/v30.1/troubleshooting",
+                  "projects/search-engine-for-typesense/v30.1/schema-indexer-e2e"
+                ]
+              },
+              {
+                "group": "Community",
+                "pages": [
+                  "projects/search-engine-for-typesense/v30.1/contributing",
+                  "projects/search-engine-for-typesense/v30.1/docs-style-guide"
+                ]
+              }
             ]
           },
           {
-            "group": "Guidebook",
-            "pages": [
-              "projects/search-engine-for-typesense/guidebook",
-              "projects/search-engine-for-typesense/guidebook-model-configuration",
-              "projects/search-engine-for-typesense/guidebook-indexing",
-              "projects/search-engine-for-typesense/guidebook-reindexing",
-              "projects/search-engine-for-typesense/guidebook-searching-filtering",
-              "projects/search-engine-for-typesense/guidebook-joins-relations",
-              "projects/search-engine-for-typesense/guidebook-scopes-advanced-orm",
-              "projects/search-engine-for-typesense/query-dsl",
-              "projects/search-engine-for-typesense/compiler",
-              "projects/search-engine-for-typesense/references-joins-deep-dive",
-              "projects/search-engine-for-typesense/joins-selection-grouping",
-              "projects/search-engine-for-typesense/cascading"
-            ]
-          },
-          {
-            "group": "Guides",
-            "pages": [
-              "projects/search-engine-for-typesense/models",
-              "projects/search-engine-for-typesense/relation",
-              "projects/search-engine-for-typesense/joins",
-              "projects/search-engine-for-typesense/field-selection",
-              "projects/search-engine-for-typesense/grouping",
-              "projects/search-engine-for-typesense/faceting",
-              "projects/search-engine-for-typesense/highlighting",
-              "projects/search-engine-for-typesense/ranking",
-              "projects/search-engine-for-typesense/hit-limits",
-              "projects/search-engine-for-typesense/presets",
-              "projects/search-engine-for-typesense/curation",
-              "projects/search-engine-for-typesense/materializers",
-              "projects/search-engine-for-typesense/collections-graph",
-              "projects/search-engine-for-typesense/cookbook-queries",
-              "projects/search-engine-for-typesense/synonyms-stopwords",
-              "projects/search-engine-for-typesense/deferred-typesense-features"
-            ]
-          },
-          {
-            "group": "API",
-            "pages": [
-              "projects/search-engine-for-typesense/client",
-              "projects/search-engine-for-typesense/relation-reference",
-              "projects/search-engine-for-typesense/schema",
-              "projects/search-engine-for-typesense/indexer",
-              "projects/search-engine-for-typesense/multi-search",
-              "projects/search-engine-for-typesense/multi-search-guide",
-              "projects/search-engine-for-typesense/deletion",
-              "projects/search-engine-for-typesense/update",
-              "projects/search-engine-for-typesense/upsert",
-              "projects/search-engine-for-typesense/active-record-syncable"
-            ]
-          },
-          {
-            "group": "CLI & DX",
-            "pages": [
-              "projects/search-engine-for-typesense/cli",
-              "projects/search-engine-for-typesense/dx",
-              "projects/search-engine-for-typesense/tuit"
-            ]
-          },
-          {
-            "group": "Operations & Testing",
-            "pages": [
-              "projects/search-engine-for-typesense/observability",
-              "projects/search-engine-for-typesense/observability-dx-testing",
-              "projects/search-engine-for-typesense/debugging",
-              "projects/search-engine-for-typesense/testing",
-              "projects/search-engine-for-typesense/troubleshooting",
-              "projects/search-engine-for-typesense/schema-indexer-e2e"
-            ]
-          },
-          {
-            "group": "Community",
-            "pages": [
-              "projects/search-engine-for-typesense/contributing",
-              "projects/search-engine-for-typesense/docs-style-guide"
+            "version": "1.0.2 (29.0)",
+            "groups": [
+              {
+                "group": "Overview",
+                "pages": [
+                  "projects/search-engine-for-typesense/v29/index",
+                  "projects/search-engine-for-typesense/v29/quickstart",
+                  "projects/search-engine-for-typesense/v29/installation",
+                  "projects/search-engine-for-typesense/v29/configuration",
+                  "projects/search-engine-for-typesense/v29/roadmap"
+                ]
+              },
+              {
+                "group": "Guidebook",
+                "pages": [
+                  "projects/search-engine-for-typesense/v29/guidebook",
+                  "projects/search-engine-for-typesense/v29/guidebook-model-configuration",
+                  "projects/search-engine-for-typesense/v29/guidebook-indexing",
+                  "projects/search-engine-for-typesense/v29/guidebook-reindexing",
+                  "projects/search-engine-for-typesense/v29/guidebook-searching-filtering",
+                  "projects/search-engine-for-typesense/v29/guidebook-joins-relations",
+                  "projects/search-engine-for-typesense/v29/guidebook-scopes-advanced-orm",
+                  "projects/search-engine-for-typesense/v29/query-dsl",
+                  "projects/search-engine-for-typesense/v29/compiler",
+                  "projects/search-engine-for-typesense/v29/references-joins-deep-dive",
+                  "projects/search-engine-for-typesense/v29/joins-selection-grouping",
+                  "projects/search-engine-for-typesense/v29/cascading"
+                ]
+              },
+              {
+                "group": "Guides",
+                "pages": [
+                  "projects/search-engine-for-typesense/v29/models",
+                  "projects/search-engine-for-typesense/v29/relation",
+                  "projects/search-engine-for-typesense/v29/joins",
+                  "projects/search-engine-for-typesense/v29/field-selection",
+                  "projects/search-engine-for-typesense/v29/grouping",
+                  "projects/search-engine-for-typesense/v29/faceting",
+                  "projects/search-engine-for-typesense/v29/highlighting",
+                  "projects/search-engine-for-typesense/v29/ranking",
+                  "projects/search-engine-for-typesense/v29/hit-limits",
+                  "projects/search-engine-for-typesense/v29/presets",
+                  "projects/search-engine-for-typesense/v29/curation",
+                  "projects/search-engine-for-typesense/v29/materializers",
+                  "projects/search-engine-for-typesense/v29/collections-graph",
+                  "projects/search-engine-for-typesense/v29/cookbook-queries",
+                  "projects/search-engine-for-typesense/v29/synonyms-stopwords",
+                  "projects/search-engine-for-typesense/v29/deferred-typesense-features"
+                ]
+              },
+              {
+                "group": "API",
+                "pages": [
+                  "projects/search-engine-for-typesense/v29/client",
+                  "projects/search-engine-for-typesense/v29/relation-reference",
+                  "projects/search-engine-for-typesense/v29/schema",
+                  "projects/search-engine-for-typesense/v29/indexer",
+                  "projects/search-engine-for-typesense/v29/multi-search",
+                  "projects/search-engine-for-typesense/v29/multi-search-guide",
+                  "projects/search-engine-for-typesense/v29/deletion",
+                  "projects/search-engine-for-typesense/v29/update",
+                  "projects/search-engine-for-typesense/v29/upsert",
+                  "projects/search-engine-for-typesense/v29/active-record-syncable"
+                ]
+              },
+              {
+                "group": "CLI & DX",
+                "pages": [
+                  "projects/search-engine-for-typesense/v29/cli",
+                  "projects/search-engine-for-typesense/v29/dx",
+                  "projects/search-engine-for-typesense/v29/tuit"
+                ]
+              },
+              {
+                "group": "Operations & Testing",
+                "pages": [
+                  "projects/search-engine-for-typesense/v29/observability",
+                  "projects/search-engine-for-typesense/v29/observability-dx-testing",
+                  "projects/search-engine-for-typesense/v29/debugging",
+                  "projects/search-engine-for-typesense/v29/testing",
+                  "projects/search-engine-for-typesense/v29/troubleshooting",
+                  "projects/search-engine-for-typesense/v29/schema-indexer-e2e"
+                ]
+              },
+              {
+                "group": "Community",
+                "pages": [
+                  "projects/search-engine-for-typesense/v29/contributing",
+                  "projects/search-engine-for-typesense/v29/docs-style-guide"
+                ]
+              }
             ]
           }
         ]

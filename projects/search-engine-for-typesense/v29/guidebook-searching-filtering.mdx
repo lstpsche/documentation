@@ -1,0 +1,56 @@
+---
+title: "Searching and filtering"
+description: "Query, filter, paginate, and select fields with the Relation DSL."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v29/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/v29/query-dsl">Query DSL</a>, <a href="/projects/search-engine-for-typesense/v29/field-selection">Field Selection</a>, <a href="/projects/search-engine-for-typesense/v29/relation-reference">Relation Guide</a>, <a href="/projects/search-engine-for-typesense/v29/highlighting">Highlighting</a>, <a href="/projects/search-engine-for-typesense/v29/ranking">Ranking</a>
+
+Use this page when you need to search and filter data from a collection.
+
+<Note>
+  Examples assume the <code>SearchEngine::Book</code> model from <a href="/projects/search-engine-for-typesense/v29/guidebook-model-configuration">Model configuration</a>.
+</Note>
+
+## Basic search
+
+```ruby
+SearchEngine::Book
+  .search("running shoes")
+  .order(price: :asc)
+  .page(1)
+  .per(20)
+  .to_a
+```
+
+## Filtering patterns
+
+```ruby
+SearchEngine::Book.where(publisher_id: "publisher_1", tags: ["sale", "new"])
+SearchEngine::Book.where(["price >= ?", 100])
+SearchEngine::Book.where("price:>=100 && tags:=[\"sale\"]")
+SearchEngine::Book.where.not(status: "archived")
+```
+
+<Note>
+  Joined filters require <code>.joins(:assoc)</code> first. See <a href="/projects/search-engine-for-typesense/v29/guidebook-joins-relations">JOINs and relations</a>.
+</Note>
+
+## Select only what you need
+
+```ruby
+SearchEngine::Book
+  .include_fields(:sku, :name, :price)
+  .exclude(:internal_notes)
+```
+
+## Pagination and limits
+
+```ruby
+SearchEngine::Book.page(2).per(25)
+SearchEngine::Book.limit(50) # fallback when page/per are not set
+```
+
+## Next steps
+
+- Build advanced predicates in <a href="/projects/search-engine-for-typesense/v29/query-dsl">Query DSL</a>.
+- Tune ranking and highlights in <a href="/projects/search-engine-for-typesense/v29/ranking">Ranking</a> and <a href="/projects/search-engine-for-typesense/v29/highlighting">Highlighting</a>.

@@ -1,0 +1,144 @@
+---
+title: "Troubleshooting"
+description: "Quick reference for common issues across joins, grouping, presets, curation, CLI, DX, schema, indexer, testing, observability, and deletion."
+---
+
+Quick reference for common issues. Each section links to deeper docs.
+
+Related: <a href="/projects/search-engine-for-typesense/v30.1/observability">Observability</a>, <a href="/projects/search-engine-for-typesense/v30.1/cli">CLI</a>, <a href="/projects/search-engine-for-typesense/v30.1/testing">Testing</a>
+
+## Joins
+
+- Missing or invalid association name
+  - Ensure you declared it on the model with <code>belongs_to :name</code>, <code>has_one :name</code>, or <code>has_many :name</code>
+  - See <a href="/projects/search-engine-for-typesense/v30.1/joins#dsl">Joins → DSL</a>
+- Joined fields not appearing in selection
+  - Use nested include fields and prefix joined fields with <code>$assoc.field</code>
+  - See <a href="/projects/search-engine-for-typesense/v30.1/field-selection">Field selection</a>
+
+## Grouping
+
+- <code>group_limit</code> ignored
+  - Provide a positive integer; omitted when <code>nil</code>
+  - See <a href="/projects/search-engine-for-typesense/v30.1/grouping">Grouping → Mapping</a>
+- Unexpected missing‑values behavior
+  - Set <code>missing_values: true</code> explicitly
+  - See <a href="/projects/search-engine-for-typesense/v30.1/grouping">Grouping → State → Params</a>
+
+## Presets
+
+- Defaults not applied
+  - Confirm <code>default_preset</code> on the model and <code>presets.enabled</code>
+  - See <a href="/projects/search-engine-for-typesense/v30.1/presets#config--default-preset">Presets → Config & Default</a>
+- <code>:lock</code> mode not locking as expected
+  - Check <code>locked_domains</code> normalization and compiler pruning
+  - See <a href="/projects/search-engine-for-typesense/v30.1/presets#strategies-merge-only-lock">Presets → Modes</a>
+
+## Curation
+
+- Hidden IDs still visible
+  - Ensure <code>filter_curated_hits</code> is set when you want hidden hits excluded
+  - See <a href="/projects/search-engine-for-typesense/v30.1/curation#dsl">Curation → DSL</a>
+- Order of pinned hits unstable
+  - Pin order is first‑occurrence; avoid duplicates
+  - See <a href="/projects/search-engine-for-typesense/v30.1/curation#materializers--explain">Curation → Inspect/explain</a>
+
+## CLI
+
+- Task arguments parsed incorrectly
+  - Quote args and avoid spaces inside brackets
+  - See <a href="/projects/search-engine-for-typesense/v30.1/cli#usage">CLI → Usage</a>
+- <code>doctor</code> exits with 1
+  - Run with <code>VERBOSE=1</code> or <code>FORMAT=json</code> for details
+  - See <a href="/projects/search-engine-for-typesense/v30.1/cli#doctor-flow">CLI → Doctor flow</a>
+
+## DX
+
+- <code>to_curl</code> shows API key
+  - Keys are redacted; update to latest, or file an issue with a snippet
+  - See <a href="/projects/search-engine-for-typesense/v30.1/dx">DX</a>
+- <code>dry_run!</code> performs I/O
+  - <code>dry_run!</code> compiles only; check for accidental client calls
+  - See <a href="/projects/search-engine-for-typesense/v30.1/dx#helpers--examples">DX → Helpers</a>
+
+## Schema
+
+- Drift not detected
+  - Use aliases correctly; compare compiled vs active physical
+  - See <a href="/projects/search-engine-for-typesense/v30.1/schema#diff-shape">Schema → Diff</a>
+- Rollback unavailable
+  - Retention may be insufficient; ensure previous physical retained
+  - See <a href="/projects/search-engine-for-typesense/v30.1/schema#api">Schema → API</a>
+
+## Indexer
+
+- 413 Payload Too Large
+  - Batches split recursively; reduce <code>batch_size</code>
+  - See <a href="/projects/search-engine-for-typesense/v30.1/indexer#retries--backoff">Indexer → Retries & backoff</a>
+- Memory spikes
+  - Ensure streaming JSONL and avoid materializing large arrays
+  - See <a href="/projects/search-engine-for-typesense/v30.1/indexer#memory-notes">Indexer → Memory notes</a>
+
+## Testing
+
+- Stub not capturing calls
+  - Ensure <code>SearchEngine.config.client = SearchEngine::Test::StubClient.new</code>
+  - Explicit `SearchEngine.config.client` always takes precedence over offline
+    mode
+  - See <a href="/projects/search-engine-for-typesense/v30.1/testing#quick-start">Testing → Quick start</a>
+- Test mode not working as expected
+  - Verify `test_mode` is enabled: `SearchEngine.config.test_mode?` should return
+    `true` in test environment
+  - Check environment: `Rails.env.test?` or `RACK_ENV=test` enables test mode
+    automatically
+  - Override via `SEARCH_ENGINE_TEST_MODE=1` or `SEARCH_ENGINE_OFFLINE=1`
+    (legacy alias)
+  - Use `SearchEngine.client` to access the configured client instance
+  - Note: if `SearchEngine.config.client` is explicitly set, it always wins
+  - See <a href="/projects/search-engine-for-typesense/v30.1/testing#test-mode-and-offline-client">Testing → Test mode</a>
+
+## Observability
+
+- Missing events
+  - Wrap calls with instrumentation helpers and enable subscriber
+  - See <a href="/projects/search-engine-for-typesense/v30.1/observability#events">Observability → Events</a>
+- Too much PII in logs
+  - Redaction rules mask secrets and filter literals; use <code>params_preview</code>
+  - See <a href="/projects/search-engine-for-typesense/v30.1/observability#payload-reference">Observability → Redaction rules</a>
+
+## Deletion
+
+- No effect / deleted 0 docs
+  - Verify <code>into:</code> points to the intended physical (or rely on alias)
+  - Ensure filter is correct; try <code>rel.dry_run!</code> first to preview
+  - See <a href="/projects/search-engine-for-typesense/v30.1/deletion">Deletion</a>
+- Empty input error
+  - <code>delete_by</code> requires a non-blank String or a non-empty Hash
+  - See <a href="/projects/search-engine-for-typesense/v30.1/deletion#model%E2%80%91level-delete_by">Deletion → Model-level</a>
+- <code>Model.cleanup</code> or <code>index:delete_stale</code> skipped
+  - Ensure you declared <code>stale</code> rules inside <code>index</code>; otherwise
+    cleanup logs a skip and returns <code>0</code>
+  - Remember rules are OR‑ed; verify at least one resolves to a non‑empty filter for the given partition
+
+## Error Reference
+
+The gem provides a structured error hierarchy under `SearchEngine::Errors`.
+
+| Error | Description | Action |
+|---|---|---|
+| `Timeout` | Request exceeded `timeout_ms`. | Check network or increase timeout. |
+| `Connection` | DNS/Socket failure. | Check host availability. |
+| `Api` | Non-2xx response from Typesense. | Check `error.status` and `error.body`. |
+| `InvalidParams` | Missing or invalid inputs. | Fix arguments provided to method. |
+| `InvalidField` | Field not in schema (and strict mode on). | Add field to schema or disable `strict_unknown_keys`. |
+| `UnknownField` | Field referenced in selection not declared on model. | Add attribute declaration or fix typo. |
+| `InvalidOperator` | Operator not recognized by query parser. | Use supported operators (see Query DSL). |
+| `InvalidType` | Value cannot be coerced to declared type. | Fix value type or enable coercions. |
+| `InvalidSelection` | Materializer requests fields not permitted by selection. | Adjust relation's `select`/`exclude` or materializer. |
+| `MissingField` | Hydration missing required field. | Ensure API returns field or mark optional. |
+| `ConflictingSelection` | Selection inputs are malformed or ambiguous. | Normalize selection inputs. |
+| `InvalidGroup` | Grouping DSL used with invalid inputs. | Fix field names, limits, or missing_values. |
+| `UnsupportedGroupField` | Grouping references joined/path fields. | Use base fields only for grouping. |
+| `HitLimitExceeded` | Result count > `max` validation. | Narrow query or increase limit. |
+
+

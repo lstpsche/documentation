@@ -1,0 +1,112 @@
+---
+title: "Upsert"
+description: "Model-level helpers to insert or replace documents without running the Indexer."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v30.1/models">Models</a> · <a href="/projects/search-engine-for-typesense/v30.1/indexer">Indexer</a> · <a href="/projects/search-engine-for-typesense/v30.1/deletion">Deletion</a>
+
+## Upserting documents
+
+Use the model-level helpers on <code>SearchEngine::Base</code> to insert or replace documents without hand-rolling JSONL payloads or touching the indexer. These helpers reuse the same schema and mapper validations as <code>.create</code>, ensuring that documents remain consistent with the compiled Typesense schema.
+
+| Helper | Purpose | Returns |
+| --- | --- | --- |
+| <code>SearchEngine::Book.upsert(record: ...)</code> | Map a single source record and upsert it | <code>Integer</code> (<code>0</code> or <code>1</code>) |
+| <code>SearchEngine::Book.upsert(data: ...)</code>   | Validate pre-mapped data and upsert it   | <code>Integer</code> (<code>0</code> or <code>1</code>) |
+| <code>SearchEngine::Book.upsert_bulk(records: ...)</code> | Map many source records and import in one JSONL batch | <code>Hash</code> summary |
+| <code>SearchEngine::Book.upsert_bulk(data: ...)</code>    | Validate an array of mapped hashes and import once   | <code>Hash</code> summary |
+
+### Single-document flow
+
+```ruby
+book = Book.find(42)
+SearchEngine::Book.upsert(record: book)      # mapper runs
+
+mapped = SearchEngine::Book.mapped_data_for(book)
+SearchEngine::Book.upsert(data: mapped)         # assume already mapped
+```
+
+- Provide either <code>record:</code> or <code>data:</code> (passing both raises <code>InvalidParams</code>).
+- The helper ensures an <code>id</code> is present by running the model’s <code>identify_by</code> strategy when necessary.
+- <code>doc_updated_at</code> and hidden flags (`*_empty`, `*_blank`) are always refreshed before import.
+- Returns <code>1</code> when the Typesense import endpoint reports success, <code>0</code> when no document was sent.
+
+### Bulk flow
+
+```ruby
+records = Book.where(publisher_id: publisher.id).limit(100)
+summary = SearchEngine::Book.upsert_bulk(records: records)
+# => {
+#      collection: "books",
+#      docs_count: 100,
+#      success_count: 100,
+#      failure_count: 0,
+#      bytes_sent: 12_480,
+#      response: "..." # raw Typesense response (string or array)
+#    }
+```
+
+```ruby
+payloads = books.map { |b| SearchEngine::Book.mapped_data_for(b) }
+SearchEngine::Book.upsert_bulk(data: payloads)
+```
+
+Bulk helpers stream a single JSONL payload through <code>SearchEngine::Client#import_documents</code> with <code>action: :upsert</code>. Input can be any enumerable—Arrays, batch enumerators, or ActiveRecord scopes. Internally the helper normalizes the enumerable, validates each document against the schema, and computes <code>doc_updated_at</code> before encoding.
+
+The returned summary mirrors the indexer’s import statistics:
+
+- <code>collection</code> – physical collection chosen via alias resolution (respects <code>into:</code> and <code>partition:</code> overrides when provided).
+- <code>docs_count</code> – number of documents encoded into the JSONL payload.
+- <code>success_count</code> / <code>failure_count</code> – counts reported by the Typesense client (currently assumed to be equal to <code>docs_count</code> when no per-document errors are surfaced).
+- <code>bytes_sent</code> – size of the JSONL payload in bytes.
+- <code>response</code> – raw response object from Typesense (string of status lines or an array of hashes).
+
+<Tip>
+  Wrap bulk imports in background jobs or maintenance tasks when you need to backfill a handful of documents without triggering a full indexer run.
+</Tip>
+
+### Validation & mapping
+
+- Records are mapped via the compiled mapper (<code>SearchEngine::Mapper.for(klass)</code>) so the same schema rules as full indexation apply (required fields, coercions, hidden flags).
+- Pre-mapped data must be provided as Hashes with string or symbol keys; any other shape raises <code>InvalidParams</code>.
+- When both <code>records:</code> and <code>data:</code> are omitted, an <code>InvalidParams</code> error is raised.
+- Invalid document shapes (missing required fields, unknown keys when strict mode is on, invalid types) raise the same <code>SearchEngine::Errors::InvalidParams</code> or <code>InvalidField</code> exceptions you see during indexing.
+
+### Options
+
+Both single and bulk helpers accept the same optional keywords:
+
+- <code>into:</code> – override the physical collection (defaults to alias resolution or configured partition resolver).
+- <code>partition:</code> – forward partition metadata to the resolver (pairs nicely with blue/green apply flows).
+
+### When to choose upsert helpers
+
+- <strong>Small batches:</strong> perfect for synchronising a handful of documents during admin workflows, background jobs, or diagnostics.
+- <strong>Ad-hoc replays:</strong> retry a small set of failed records without replaying the entire indexer.
+- <strong>Hybrid flows:</strong> combine with <code>.mapped_data_for</code> when your application already builds the mapped document (e.g., for audit snapshots).
+
+<Info>
+  For mapping source data without upserting to Typesense, use <code>.from(data, mode: :hash)</code> to get mapped hashes, or <code>.from(data, mode: :instance)</code> to get hydrated model instances. See <a href="/projects/search-engine-for-typesense/v30.1/models#mapping-source-data-to-model-instances-from">Models → Mapping source data</a> for details.
+</Info>
+
+### Comparison: Create vs Upsert
+
+| Feature | <code>.create</code> | <code>.upsert</code> / <code>.upsert_bulk</code> |
+| --- | --- | --- |
+| API call | <code>/documents</code> (single) | <code>/documents/import?action=upsert</code> |
+| Document count | 1 at a time | 1 (single helper) or many (bulk) |
+| Mapper usage | Optional (hash accepted) | Mandatory for <code>record:</code> inputs; always validates |
+| <code>doc_updated_at</code> | auto-set | auto-set |
+| Return value | Hydrated model instance | Status counts / raw response |
+
+### Mermaid overview
+
+```mermaid
+flowchart LR
+  R[record or mapped data] --> N[Normalize & validate]
+  N --> M[Inject id + doc_updated_at]
+  M --> J[Encode JSONL]
+  J --> C[Client#import_documents(action: :upsert)]
+  C --> S[Summary (counts, bytes, response)]
+```
+

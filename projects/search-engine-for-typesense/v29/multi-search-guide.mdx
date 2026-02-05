@@ -1,0 +1,191 @@
+---
+title: "Multi-search Guide"
+description: "Patterns for federating multiple labeled searches: builder DSL, per-search overrides, result handling, Rails controller usage, and DX."
+---
+
+Concise reference for running multiple labeled searches in a single Typesense round‑trip, handling results, and applying safe URL‑level caching.
+
+- <strong>What it is</strong>: federates multiple <code>Relation</code>s into one request; results are mapped back to labels in order.
+- <strong>When to use</strong>: homepage modules, typeahead+categories, federated search blocks; prefer it over multiple sequential calls to reduce latency.
+- <strong>When not to use</strong>: completely independent pages with different lifecycles or when strong isolation/errors per request are critical.
+
+### Builder DSL
+
+Use `SearchEngine.multi_search(common: …) { |m| m.add(label, relation) }`. The <code>common:</code> hash is shallow‑merged into each compiled relation payload; per‑search values from the relation win on key conflicts.
+
+Required verbatim example:
+
+```ruby
+res = SearchEngine.multi_search(common: { query_by: SearchEngine.config.default_query_by }) do |m|
+  m.add :books, SearchEngine::Book.where(category_id: 5).per(5)
+  m.add :publishers,   SearchEngine::Publisher.where("name:~rud").per(3)
+end
+res[:books].to_a
+```
+
+Minimal variations:
+
+- Override pagination per search while inheriting <code>common:</code>:
+  ```ruby
+  res = SearchEngine.multi_search(common: { q: "milk", per_page: 50, query_by: SearchEngine.config.default_query_by }) do |m|
+    m.add :books, SearchEngine::Book.all.per(10) # per_page=10 overrides common 50
+    m.add :publishers,   SearchEngine::Publisher.all            # inherits per_page=50
+  end
+  ```
+- Add field selection per search:
+  ```ruby
+  res = SearchEngine.multi_search(common: { q: "*", query_by: SearchEngine.config.default_query_by }) do |m|
+    m.add :books, SearchEngine::Book.select(:id, :name).per(6)
+    m.add :publishers,   SearchEngine::Publisher.select(:id).per(3)
+  end
+  ```
+
+See example controller: <code>examples/demo_shop/app/controllers/search_controller.rb</code>.
+
+### Per‑search overrides
+
+Per‑relation chainers and <code>options(...)</code> override or augment <code>common:</code> on a per‑entry basis:
+
+- <code>where</code>/filters → <code>filter_by</code>
+- <code>order</code> → <code>sort_by</code>
+- <code>select</code>/<code>exclude</code> → <code>include_fields</code>/<code>exclude_fields</code>
+- <code>page</code>/<code>per</code> → <code>page</code>/<code>per_page</code>
+- <code>options(q: ..., query_by: ..., infix: ...)</code> map into the compiled body
+
+Example (per‑search <code>query_by</code> and <code>filters</code> override <code>common:</code>):
+
+```ruby
+res = SearchEngine.multi_search(common: { q: params[:q].presence || "*", query_by: SearchEngine.config.default_query_by }) do |m|
+  m.add :books, SearchEngine::Book.where(active: true).options(query_by: "name,description").per(6)
+  m.add :publishers,   SearchEngine::Publisher.where(["name PREFIX ?", params[:q].to_s.first(12)]).per(3)
+end
+```
+
+Guardrails:
+- <strong>Consistent <code>query_by</code> per collection</strong>: ensure each collection’s fields exist; unknown fields raise during compile when strict field checks are enabled.
+- <strong>URL‑only knobs</strong>: <code>use_cache</code>, <code>cache_ttl</code> live at the URL level and are filtered from both <code>common:</code> and per‑search bodies.
+
+### Result handling with MultiResult
+
+<code>SearchEngine.multi_search</code> returns <code>SearchEngine::Multi::ResultSet</code> (hash‑like). If you prefer a dedicated wrapper, use <code>SearchEngine.multi_search_result</code> which returns <code>SearchEngine::MultiResult</code>.
+
+- Hash‑like access: <code>res[:books]</code> (matches the labels you added)
+- Each entry is a <code>SearchEngine::Result</code> with <code>#to_a</code>, <code>#found</code>, <code>#empty?</code>, <code>#raw</code>, etc.
+- Order is preserved; labels are case‑insensitive symbols internally.
+
+From the snippet above, <code>res[:books].to_a</code> returns hydrated hits for the <code>:books</code> entry.
+
+Example with <code>MultiResult</code> directly:
+
+```ruby
+mr = SearchEngine.multi_search_result(common: { q: params[:q].presence || "*", query_by: SearchEngine.config.default_query_by }) do |m|
+  m.add :books, SearchEngine::Book.per(6)
+  m.add :publishers,   SearchEngine::Publisher.per(3)
+end
+
+products = mr[:books]
+publishers   = mr[:publishers]
+
+count = products&.found.to_i
+empty = publishers&.empty?
+```
+
+Partial failures: if Typesense returns per‑entry error statuses inside a 200 response, inspect <code>entry.raw</code> to branch UI gracefully (avoid raising globally):
+
+```ruby
+entry = mr[:publishers]
+if (code = entry&.raw&.fetch("code", 200).to_i) != 200
+  # render a soft error for this box, keep other boxes
+else
+  # render hits
+end
+```
+
+### Controller usage patterns (Rails)
+
+Keep controllers thin; build relations with only request‑dependent inputs and pass a single multi‑result to the view.
+
+```ruby
+class HomeController < ApplicationController
+  def index
+    q    = params[:q].to_s
+    page = params[:page]
+    per  = params[:per]
+
+    common = { q: q.presence || "*", query_by: SearchEngine.config.default_query_by }
+
+    books_rel = SearchEngine::Book.where(active: true).per(6)
+    publishers_rel   = SearchEngine::Publisher.where(["name PREFIX ?", q.first(24)]).per(3)
+
+    @results = SearchEngine.multi_search_result(common: common) do |m|
+      m.add :books, books_rel
+      m.add :publishers,   publishers_rel
+    end
+
+    # Suggested fragment cache key derived from stable URL inputs
+    @cache_key = ["home/index", params.slice(:q, :page, :per, :filters).to_unsafe_h]
+  end
+end
+```
+
+Caching notes:
+- Prefer URL/request‑level cache keys derived from stable inputs (e.g., <code>params.slice(:q, :page, :per, :filters)</code>).
+- Multi‑search uses URL‑level cache knobs from config: `{ use_cache: SearchEngine.config.use_cache, cache_ttl: SearchEngine.config.cache_ttl_s }`.
+- Per‑relation <code>options(use_cache:, cache_ttl:)</code> are not applied in the multi‑search path; set them via config for multi‑search.
+- Consider setting HTTP cache headers at the controller/edge layer based on those inputs; avoid embedding secrets.
+
+### Compile flow
+
+```mermaid
+flowchart LR
+  R[Relations] --> M[Multi builder]
+  M --> C[Compiler (per search)]
+  C --> P[Multi payload]
+  P --> CL[Client]
+  CL --> TS[Typesense]
+  TS --> MR[MultiResult]
+```
+
+### DX & debugging
+
+Prefer network‑safe introspection for demos and debugging:
+
+```ruby
+rel = SearchEngine::Book.where(category_id: 5).per(5)
+rel.dry_run!   # => { url:, body:, url_opts: } with redaction
+rel.to_curl    # one‑liner with redacted API key
+puts rel.explain # multi‑line overview (no network I/O)
+```
+
+- See the DX page for details and redaction policy.
+- For fully offline tests/examples, use the stub client approach in the Testing page.
+
+### Presets & Curation in multi‑search
+
+Applied per relation. Each <code>m.add</code> carries its own preset/curation context and compiles independently.
+- Presets: per‑search <code>preset</code> and <code>preset_mode</code> (merge/only/lock) are honored during compile.
+- Curation: <code>pinned_hits</code>, <code>hidden_hits</code>, <code>override_tags</code>, <code>filter_curated_hits</code> are emitted body‑only when present.
+
+See the dedicated Presets and Curation docs for details and caveats.
+
+### Edge cases & troubleshooting
+
+- <strong>Misaligned <code>query_by</code></strong>: ensure each collection’s fields exist; validate with <code>rel.explain</code> and <code>rel.dry_run!</code>.
+- <strong>Unknown fields</strong>: selection and filtering validate against declared attributes; fix names or disable strictness per environment.
+- <strong>Mixed grouping</strong>: grouping options are compiled per relation; UI should handle grouped vs non‑grouped results independently.
+- <strong>Differing <code>per</code>/<code>page</code></strong>: expected; each box paginates independently.
+- <strong>Partial failures</strong>: the helper augments raised API errors with failing label when the HTTP status is non‑2xx; for 2xx with per‑entry errors, inspect <code>result.raw</code> per label and degrade gracefully.
+- <strong>Redaction</strong>: never print API keys or raw <code>filter_by</code> directly; use <code>dry_run!</code>, <code>to_curl</code>, or <code>explain</code> which apply redaction.
+
+---
+
+### Related links
+- <a href="/projects/search-engine-for-typesense/v29/multi-search">Multi-search</a>
+- <a href="/projects/search-engine-for-typesense/v29/client">Client</a>
+- <a href="/projects/search-engine-for-typesense/v29/relation-reference">Relation Guide</a>
+- <a href="/projects/search-engine-for-typesense/v29/dx">DX</a>
+- <a href="/projects/search-engine-for-typesense/v29/observability">Observability</a>
+- <a href="/projects/search-engine-for-typesense/v29/testing">Testing</a>
+- <a href="/projects/search-engine-for-typesense/v29/troubleshooting">Troubleshooting</a>
+
+

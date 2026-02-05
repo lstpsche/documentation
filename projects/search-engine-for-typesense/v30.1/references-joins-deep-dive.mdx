@@ -1,0 +1,181 @@
+---
+title: "References & JOINs — Deep dive"
+description: "How reference fields power JOINs, what the schema stores, runtime behavior, reindex rules, cascading, and many‑to‑many patterns."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v30.1/joins">Joins</a>, <a href="/projects/search-engine-for-typesense/v30.1/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/v30.1/cascading">Cascading</a>, <a href="/projects/search-engine-for-typesense/v30.1/field-selection">Field Selection</a>
+
+This page explains how reference fields power JOINs, what gets stored in the schema, how queries use references at runtime, what reindexing is (and isn’t) required, and how cascading interacts with bi‑directional relationships. Examples use mock models like <code>SearchEngine::Book</code> and <code>SearchEngine::Author</code>.
+
+## Overview
+
+- <strong>Declare</strong> associations on your model: <code>belongs_to :author</code> and/or <code>has_many :books</code>.
+- <strong>Compile</strong> adds a field <code>reference: "authors.id"</code> for <code>author_id</code> in the <code>books</code> schema (belongs_to only; <code>has</code> does not emit references).
+- <strong>Query</strong> uses <code>$assoc.field</code> in filters/sorts and <code>$assoc(...)</code> in selection.
+- <strong>Single‑hop only</strong>: no multi‑hop (<code>$a.$b.field</code>) joins.
+- <strong>Reindex rules</strong>: updates to referenced docs (e.g., <code>Author.name</code>) don’t require reindexing referencers; changing join keys or denormalized copies does.
+- <strong>Cascade</strong>: single hop, detects A ↔ B cycles and skips those pairs.
+- <strong>Reference validation</strong>: during <code>Schema.apply!</code> the gem resolves <code>reference:</code> targets via alias when present, but gracefully falls back to the physical name if no alias exists. Aliases are still recommended for blue/green deploys, yet physical‑only setups are supported.
+
+---
+
+## Declaring references with the association DSL
+
+```ruby
+class SearchEngine::Book < SearchEngine::Base
+  collection :books
+  attribute :id, :integer
+  attribute :author_id, :string  # Reference fields must be :string or [:string]
+
+  # books.author_id → authors.id
+  # belongs_to defaults are association‑name based:
+  # collection: :authors; local_key: :author_id; foreign_key: :author_id
+  belongs_to :author
+end
+```
+
+What happens at compile time:
+
+- The schema for <code>books</code> includes the field <code>author_id</code> with <code>reference: "authors.id"</code>.
+- Types must be compatible (<code>author_id</code> and <code>authors.id</code> consistently typed as string/int64).
+- Array keys (<code>[:string]</code>/<code>[:integer]</code>) model one‑to‑many (e.g., <code>promotion_ids → promotions.id</code>).
+
+You can declare a reverse association on <code>SearchEngine::Author</code> if you need to query from Authors to Books:
+
+```ruby
+class SearchEngine::Author < SearchEngine::Base
+  collection :authors
+  attribute :id, :integer
+
+  # authors.id → books.author_id (reverse direction)
+  has_many :books, foreign_key: :author_id
+end
+```
+
+These two joins are independent; declare either or both, depending on how you plan to query.
+
+---
+
+## Querying with joins
+
+- <strong>Select from joined collections</strong>:
+
+```ruby
+SearchEngine::Book
+  .joins(:authors)
+  .include_fields(:id, :title, authors: [:first_name, :last_name])
+```
+
+Compiles to: <code>$authors(first_name,last_name),id,title</code>.
+
+- <strong>Filter / sort on joined fields</strong>:
+
+```ruby
+SearchEngine::Book
+  .joins(:authors)
+  .where(authors: { last_name: "Rowling" })     # → $authors.last_name:="Rowling"
+  .order(authors: { last_name: :asc })           # → $authors.last_name:asc
+```
+
+Rules & guardrails:
+
+- Call <code>.joins(:assoc)</code> before referencing <code>$assoc.field</code>.
+- Only single hop (<code>$assoc.field</code>) is supported; deeper paths are not.
+- Unknown fields raise with suggestions when attributes are declared.
+
+---
+
+## What is stored and how references are resolved
+
+- The model DSL compiles a field‑level <code>reference: "&lt;target_collection&gt;.&lt;foreign_key&gt;"</code> (or <code>;async</code> variant) on the referencer’s local key for <code>belongs_to</code> associations. This lives in the Typesense collection schema and is used by the server to resolve JOINs at query time.
+
+### Asynchronous references
+
+- <code>belongs_to :author, async_ref: true</code> encodes <code>reference: "authors.id;async"</code> in the schema, allowing ingestion when the <code>authors</code> document is not yet present.
+- Values you store in the referencer (e.g., <code>author_id</code>) must match the target field type and value (e.g., <code>authors.id</code>). The engine does not maintain any separate link table.
+- For arrays of keys, use <code>[:string]</code>/<code>[:integer]</code> on the local side; selection returns arrays of joined documents when applicable.
+
+---
+
+## When do you need to reindex?
+
+Reindex referencers only when necessary. Quick rules:
+
+- <strong>No reindex needed</strong> when a referenced document’s non‑key attributes change.
+  - Example: updating <code>Author.name</code> is immediately visible via joins in <code>Book</code> queries.
+- <strong>Reindex referencers</strong> when:
+  - You change the join key value on the referencer (e.g., a book’s <code>author_id</code>).
+  - You store denormalized copies of referenced fields inside the referencer (e.g., <code>author_name</code> on <code>books</code> for <code>query_by</code>).
+  - You change schema in ways that affect join keys/field types.
+
+Notes:
+
+- <code>Schema.apply!</code> (blue/green) handles reindexing for the collection you are applying. Other collections don’t need reindex solely because of alias swaps; joins are resolved by the server using the latest data in the referenced collection.
+
+---
+
+## Cascading and bi‑directional joins
+
+The engine includes a cascade helper that discovers references (from live Typesense schemas or the compiled registry) and triggers reindexing of immediate referencers when a referenced document is updated.
+
+- <strong>Single hop only</strong>; no transitive chaining.
+- <strong>Cycle guard</strong>: immediate A ↔ B cycles are detected and skipped to avoid ping‑pong.
+- <strong>Partial vs full</strong>: when safe (ActiveRecord source, no custom Partitioner), the engine performs a targeted partial rebuild of the referencer using the foreign key; otherwise it falls back to a full rebuild for that referencer.
+
+Manual targeted rebuild example (use your actual key names):
+
+```ruby
+# After updating an Author with id 42, refresh Books that reference it by foreign key
+SearchEngine::Indexer.rebuild_partition!(
+  SearchEngine::Book,
+  partition: { author_id: [42] }
+)
+```
+
+Bi‑directional joins are safe. Cascade will skip the immediate pair to prevent loops; you can still manually trigger a targeted rebuild as shown above when needed.
+
+---
+
+## Many‑to‑many pattern
+
+Model a bridge collection with two references (one to each side). Queries can join through the bridge in a single hop from the base to the bridge. Multi‑hop (base → bridge → other) is not supported by the JOINs DSL; denormalize or run separate searches when you need multi‑hop.
+
+```ruby
+class SearchEngine::BookAuthor < SearchEngine::Base
+  collection :book_authors
+  attribute :book_id, :integer
+  attribute :author_id, :integer
+
+  join :books,   collection: :books,   local_key: :book_id,   foreign_key: :id
+  join :authors, collection: :authors, local_key: :author_id, foreign_key: :id
+end
+```
+
+```ruby
+# From books, enrich with authors via the bridge in one hop (base → bridge)
+SearchEngine::Book
+  .joins(:book_authors)
+  .include_fields(:id, :title, book_authors: [:author_id])
+```
+
+---
+
+## Best practices
+
+- Declare joins only where you actually need to query across collections.
+- Prefer selection with minimal <code>$assoc(...)</code> fields to reduce payload and speed hydration.
+- Avoid denormalizing referenced fields unless you need them for <code>query_by</code>/ranking; denormalization increases reindexing needs.
+- Keep join keys typed consistently on both sides (<code>int64</code> ↔ <code>int64</code>, <code>string</code> ↔ <code>string</code>).
+
+---
+
+## Troubleshooting
+
+- <strong>Unknown association</strong>: declare it via <code>join :name, collection:, local_key:, foreign_key:</code> on the base model.
+- <strong>Join not applied</strong>: call <code>.joins(:assoc)</code> before selecting or filtering on <code>$assoc.field</code>.
+- <strong>Unknown joined field</strong>: verify the target collection’s attributes; suggestions are provided.
+- <strong>Cycle skipped</strong>: expected with A ↔ B; use a manual targeted rebuild when you truly need to refresh referencers.
+
+Backlinks: <a href="/projects/search-engine-for-typesense/v30.1/joins">Joins</a> · <a href="/projects/search-engine-for-typesense/v30.1/cascading">Cascading</a>
+
+

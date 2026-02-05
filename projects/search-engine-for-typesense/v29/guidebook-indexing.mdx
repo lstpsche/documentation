@@ -1,0 +1,56 @@
+---
+title: "Indexing"
+description: "Fastest ways to build documents into a collection."
+---
+
+## Related links
+- <a href="/projects/search-engine-for-typesense/v29/indexer">Indexer</a>
+- <a href="/projects/search-engine-for-typesense/v29/cli">CLI</a>
+- <a href="/projects/search-engine-for-typesense/v29/observability">Observability</a>
+- <a href="/projects/search-engine-for-typesense/v29/troubleshooting">Troubleshooting</a>
+
+Use this page when you need the quickest way to index a collection.
+
+<Note>
+  Define <code>index do ... map</code> in your model first. See
+  <a href="/projects/search-engine-for-typesense/v29/indexer">Indexer</a>.
+</Note>
+
+## Fastest ways to index
+
+<Steps>
+<Step title="CLI (single collection)">
+  ```bash
+  rails 'search_engine:index:rebuild[books]'
+  ```
+</Step>
+
+<Step title="Ruby (single or multiple collections)">
+  ```ruby
+  SearchEngine::Book.index_collection
+  SearchEngine::Bulk.index_collections(:books, :publishers)
+  SearchEngine::Bulk.index_all
+  ```
+
+  <Tip>
+    Use <code>partition:</code> to rebuild specific partitions.
+  </Tip>
+</Step>
+</Steps>
+
+## Optional: auto-sync on changes
+
+```ruby app/models/book.rb
+class Book < ApplicationRecord
+  include SearchEngine::ActiveRecordSyncable
+
+  search_engine_syncable on: %i[create update destroy]
+end
+```
+
+## Next steps
+
+- See <a href="/projects/search-engine-for-typesense/v29/indexer">Indexer</a> for mapping
+  options and batch tuning.
+- Use <a href="/projects/search-engine-for-typesense/v29/observability">Observability</a>
+  to monitor rebuilds.

@@ -1,0 +1,229 @@
+---
+title: "Query Cookbook — Common Patterns"
+description: "Copy minimal, production-ready patterns and adapt fields to your models. Use dry_run!/explain to debug without I/O."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v30.1/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/v30.1/query-dsl">Query DSL</a>, <a href="/projects/search-engine-for-typesense/v30.1/dx">DX</a>
+
+## Intro
+
+Copy these minimal patterns and adapt fields to your models. Prefer <code>dry_run!</code> and <code>explain</code> to debug locally without network I/O.
+
+## Index of patterns
+
+- <a href="#exact-match">Exact match</a>
+- <a href="#prefixinfix-match">Prefix/infix match</a>
+- <a href="#any-of-list-in">Any of list (IN)</a>
+- <a href="#price-range--sort">Price range + sort</a>
+- <a href="#pagination">Pagination</a>
+- <a href="#facet-filters">Facet filters</a>
+- <a href="#faceting-dsl">Faceting DSL</a>
+- <a href="#pinnedhidden-curation">Pinned/hidden curation</a>
+- <a href="#grouping-top-n">Grouping top‑N</a>
+- <a href="#joins--basic">Joins — basic</a>
+- <a href="#multi-search-two-relations">Multi‑search two relations</a>
+
+[Back to top ⤴](#query-cookbook-%E2%80%94-common-patterns)
+
+## Recipes
+
+### Exact match
+
+Small set lookup by ID.
+
+```ruby
+SearchEngine::Book.where(id: 42)
+```
+
+Why it works / gotchas:
+- Simple <code>Eq</code> predicate; validated field name
+- Use arrays for <code>IN</code> (see below)
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/query-dsl#builders">Query DSL → Builders</a>
+
+---
+
+### Prefix/infix match
+
+Begins‑with or contains‑like filters via templates/raw.
+
+```ruby
+SearchEngine::Book.where(["name PREFIX ?", "mil"])  # prefix
+SearchEngine::Book.where("name:~=milk")               # infix (raw)
+```
+
+Why / gotchas:
+- <code>PREFIX</code> is parsed to AST; infix shown as raw Typesense fragment
+- Consider query text in <code>q</code> for full‑text; this is a filter
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/query-dsl#builders">Query DSL</a>, <a href="/projects/search-engine-for-typesense/v30.1/compiler#node-mapping">Compiler</a>
+
+---
+
+### Any of list (IN)
+
+Match any of several brands.
+
+```ruby
+SearchEngine::Book.where(author_id: [1, 2, 3])
+```
+
+Why / gotchas:
+- Non‑empty arrays only; values coerced per attribute type
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/query-dsl#parsing-examples">Query DSL → Parsing examples</a>
+
+---
+
+### Price range + sort
+
+Use two comparators for numeric ranges.
+
+```ruby
+SearchEngine::Book
+  .where(["price >= ?", 100])
+  .where(["price <= ?", 200])
+  .order(price: :asc)
+```
+
+Why / gotchas:
+- Typesense has no range literal in <code>filter_by</code>; use `>=` and `<=`
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/compiler#quoting--types">Compiler → Quoting & types</a>
+
+---
+
+### Pagination
+
+Classic page/per; prefer this over <code>limit/offset</code> unless you need offset math.
+
+```ruby
+SearchEngine::Book.page(2).per(20)
+```
+
+Why / gotchas:
+- <code>page >= 1</code>, <code>per >= 1</code>; wins over <code>limit/offset</code>
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/relation#order--select--pagination">Relation → order/select/pagination</a>
+
+---
+
+### Facet filters
+
+Combine multiple filters with AND semantics across calls.
+
+```ruby
+SearchEngine::Book
+  .where(category: "dairy")
+  .where(author_id: [1, 2])
+  .where(["price <= ?", 500])
+```
+
+Why / gotchas:
+- Each <code>where</code> appends; compiled with <code>AND</code>
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/query-dsl#where-it-fits">Query DSL → Where it fits</a>
+
+---
+
+### Pinned/hidden curation
+
+Pin two IDs and hide one; keep network‑safe while inspecting.
+
+```ruby
+rel = SearchEngine::Book.pin("p_12", "p_34").hide("p_99")
+rel.dry_run!
+```
+
+Why / gotchas:
+- Curation keys are body‑only; redacted in logs
+- Hide wins when an ID is both pinned and hidden
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/curation#dsl">Curation</a>, <a href="/projects/search-engine-for-typesense/v30.1/observability#observability">Observability</a>
+
+---
+
+### Grouping top‑N
+
+First hit per group, up to N hits inside each.
+
+```ruby
+SearchEngine::Book.group_by(:author_id, limit: 2)
+```
+
+Why / gotchas:
+- <code>group_limit</code> caps hits per group; pagination applies to number of groups
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/grouping#pagination-interaction">Grouping</a>
+
+---
+
+### Joins — basic
+
+Filter on a joined collection field.
+
+```ruby
+SearchEngine::Book
+  .joins(:authors)
+  .where(authors: { last_name: "Rowling" })
+  .include_fields(authors: [:first_name])
+```
+
+Why / gotchas:
+- Call <code>.joins(:assoc)</code> before referencing <code>$assoc.field</code>
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/joins#relation-usage">Joins</a>, <a href="/projects/search-engine-for-typesense/v30.1/compiler#integration">Compiler</a>
+
+---
+
+### Multi‑search two relations
+
+Send two labeled relations in one round‑trip.
+
+```ruby
+res = SearchEngine.multi_search do |m|
+  m.add :books, SearchEngine::Book.where(category: "dairy").per(5)
+  m.add :publishers,   SearchEngine::Publisher.where(["name PREFIX ?", "mil"]).per(3)
+end
+```
+
+Why / gotchas:
+- Per‑search params compiled independently; order preserved by labels
+- Links: <a href="/projects/search-engine-for-typesense/v30.1/multi-search#dsl">Multi‑search</a>
+
+---
+
+## Debug each recipe
+
+Use <code>explain</code> or <code>dry_run!</code> to preview without I/O:
+
+```ruby
+rel = SearchEngine::Book.where(active: true).order(updated_at: :desc).per(10)
+puts rel.explain
+rel.dry_run!
+```
+
+Redaction policy hides literals and secrets; bodies remain copyable.
+
+[Back to top ⤴](#query-cookbook-%E2%80%94-common-patterns)
+
+## Edge‑case callouts
+
+- <strong>Quoting</strong>: strings double‑quoted; booleans and <code>null</code> literal; arrays flattened one level
+- <strong>Boolean coercion</strong>: only for boolean‑typed fields; strings "true"/"false" accepted
+- <strong>Empty arrays</strong>: invalid for membership; provide at least one value
+- <strong>Reserved characters</strong>: prefer templates with placeholders to avoid manual escaping
+- <strong>Ambiguous names</strong>: unknown fields raise with suggestions when attributes are declared
+- <strong>Sort vs group order</strong>: sort applies before grouping; group order preserved
+
+---
+
+Related links: <a href="/projects/search-engine-for-typesense/v30.1/query-dsl">Query DSL</a>, <a href="/projects/search-engine-for-typesense/v30.1/compiler">Compiler</a>, <a href="/projects/search-engine-for-typesense/v30.1/dx">DX</a>, <a href="/projects/search-engine-for-typesense/v30.1/observability">Observability</a>, <a href="/projects/search-engine-for-typesense/v30.1/joins">Joins</a>, <a href="/projects/search-engine-for-typesense/v30.1/grouping">Grouping</a>, <a href="/projects/search-engine-for-typesense/v30.1/presets">Presets</a>, <a href="/projects/search-engine-for-typesense/v30.1/curation">Curation</a>
+
+### Faceting DSL
+
+Add facets and facet queries:
+
+```ruby
+rel = SearchEngine::Book
+  .facet_by(:author_id, max_values: 20)
+  .facet_query(:price, "[0..9]", label: "under_10")
+
+res = rel.execute
+res.facet_values("author_id") # => array of { value:, count:, ... }
+```
+
+See <a href="/projects/search-engine-for-typesense/v30.1/faceting">Faceting</a> for details.
+
+

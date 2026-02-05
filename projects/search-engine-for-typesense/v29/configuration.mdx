@@ -1,0 +1,289 @@
+---
+title: "Configuration"
+description: "All configuration lives under SearchEngine.config. Reference, ENV mapping, and practical notes."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v29/installation">Installation</a>, <a href="/projects/search-engine-for-typesense/v29/client">Client</a>, <a href="/projects/search-engine-for-typesense/v29/cli">CLI</a>
+
+This engine centralizes all knobs under <code>SearchEngine.config</code>. These values drive the client and relation layers and are hydrated from ENV at boot by the engine initializer.
+
+## Field reference
+
+| Field              | Type                 | Default        | Notes |
+|--------------------|----------------------|----------------|-------|
+| `host`             | String               | `"localhost"`  | Typesense node host |
+| `port`             | Integer              | `8108`         | Typesense node port |
+| `protocol`         | String               | `"http"`       | `"http"` or `"https"` |
+| `api_key`          | String, nil          | `nil`          | Required for real requests; redacted in logs |
+| `timeout_ms`       | Integer              | `3_600_000`    | Total request timeout (ms) |
+| `open_timeout_ms`  | Integer              | `1000`         | Connect/open timeout (ms) |
+| `retries`          | Hash                 | `{ attempts: 2, backoff: 10.0..60.0 }` | Backoff supports Float or Range (seconds) |
+| `logger`           | Logger-like          | Rails logger or stdout | Must respond to `#info/#warn/#error` |
+| `default_query_by` | String, nil          | `nil`          | Comma-separated fields for `query_by` default |
+| `default_infix`    | String               | `"fallback"`   | Typesense infix option |
+| `use_cache`        | Boolean              | `true`         | URL-level option only |
+| `cache_ttl_s`      | Integer              | `60`           | URL-level option: TTL seconds -> `cache_ttl` |
+| `strict_fields`    | Boolean              | `true` in development/test; else `false` | Parser validates unknown fields when `true`; see <a href="/projects/search-engine-for-typesense/v29/query-dsl#error-reference">Query DSL</a> |
+| `multi_search_limit` | Integer            | `50`           | Hard cap on searches per multi-search; validated before network call |
+| `test_mode`          | Boolean            | `true` in test; else `false` | Uses `OfflineClient` when true |
+| `search_engine_models` | String           | `"app/search_engine"` | Path (relative or absolute) to host app SearchEngine models; drives the dedicated loader |
+| `relation_print_materializes` | Boolean   | `true`         | When true, `Relation#inspect` materializes a preview; set `false` for zero-I/O console output |
+
+## ENV mapping
+
+Only blank/unset fields are hydrated from ENV during engine boot; explicit initializer values win.
+
+| ENV var                  | Field           |
+|--------------------------|-----------------|
+| `TYPESENSE_HOST`         | `host`          |
+| `TYPESENSE_PORT`         | `port`          |
+| `TYPESENSE_PROTOCOL`     | `protocol`      |
+| `TYPESENSE_API_KEY`      | `api_key`       |
+| `TYPESENSE_STRICT_FIELDS`| `strict_fields` |
+| `SEARCH_ENGINE_TEST_MODE`| `test_mode`     |
+| `SEARCH_ENGINE_OFFLINE`  | `test_mode`     |
+
+`SEARCH_ENGINE_TEST_MODE` accepts `1`/`0`, `true`/`false`, `yes`/`no`, `on`/`off`.
+When it is unset, `SEARCH_ENGINE_OFFLINE` is treated as a legacy alias.
+
+## Initializer
+
+Place the following in your host app at `config/initializers/search_engine.rb`:
+
+```ruby
+# config/initializers/search_engine.rb
+SearchEngine.configure do |c|
+  c.host             = ENV.fetch("TYPESENSE_HOST", "localhost")
+  c.port             = ENV.fetch("TYPESENSE_PORT", 8108).to_i
+  c.protocol         = ENV.fetch("TYPESENSE_PROTOCOL", "http")
+  c.api_key          = ENV.fetch("TYPESENSE_API_KEY")
+  c.timeout_ms       = 3_600_000
+  c.open_timeout_ms  = 1_000
+  c.retries          = { attempts: 2, backoff: 10.0..60.0 }
+  c.default_query_by = "name, description"
+  c.default_infix    = "fallback"
+  c.use_cache        = true
+  c.cache_ttl_s      = 60
+  c.strict_fields    = Rails.env.development? || Rails.env.test?
+  c.logger           = Rails.logger
+  c.multi_search_limit = 50
+end
+```
+
+<Info>
+  <strong>Note</strong>: <code>ENV.fetch("TYPESENSE_API_KEY")</code> will raise if not set. This is intentional for production/staging. In development you can omit an initializer and rely on defaults/ENV.
+</Info>
+
+## URL-level caching knobs
+
+- `use_cache` and `cache_ttl_s` are URL-level options consumed by the client. They should not be included in request bodies.
+
+## Timeouts & retries
+
+- `timeout_ms`: total request timeout (ms). Default is 60 minutes (3_600_000 ms) and maps to `Typesense::Client`'s `connection_timeout_seconds`.
+- `open_timeout_ms`: connect/open timeout (ms).
+- `retries`: `{ attempts: Integer, backoff: Float or Range<Float> }` where backoff is in seconds.
+  - When `backoff` is a Range (e.g., `10.0..60.0`), the client samples a single value at build time to introduce jitter between retries.
+
+Example overrides:
+
+```ruby
+SearchEngine.configure do |c|
+  # Keep long writes from aborting prematurely
+  c.timeout_ms = 3_600_000
+
+  # Introduce jitter to avoid thundering herd on retries
+  c.retries = { attempts: 3, backoff: 10.0..60.0 }
+end
+```
+
+## Logger
+
+Defaults to `Rails.logger` when available; otherwise a `$stdout` logger at INFO level. You may supply any object responding to `#info`, `#warn`, and `#error`.
+
+## Test mode
+
+When `test_mode` is `true`, the engine uses `SearchEngine::Test::OfflineClient` via
+`SearchEngine.client`. This avoids network I/O and returns safe empty responses.
+
+- Defaults to `true` in Rails test (`Rails.env.test?`) or when `RACK_ENV=test`
+  is set
+- Can be overridden via `SEARCH_ENGINE_TEST_MODE=1` or `SEARCH_ENGINE_TEST_MODE=0`
+- Legacy `SEARCH_ENGINE_OFFLINE` env var is supported as an alias
+- If `SearchEngine.config.client` is set (e.g., `StubClient`), it always takes
+  precedence
+
+Use `SearchEngine.client` to access the configured client instance. It respects
+`SearchEngine.config.client` when set, otherwise returns `OfflineClient` in test
+mode or a new `Client` instance.
+
+## Advanced Configuration
+
+Beyond the top-level keys, several nested configurations control specific subsystems. These can be set in the `configure` block.
+
+### Indexer
+Settings for bulk import and background processing.
+
+```ruby
+SearchEngine.configure do |c|
+  c.indexer.batch_size = 2000 # default
+  c.indexer.gzip = true       # compress payloads (default: false)
+  c.indexer.dispatch = :active_job # or :inline (default: :active_job if available)
+  c.indexer.queue_name = 'search_index'
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `batch_size` | 2000 | Documents per batch during bulk operations |
+| `timeout_ms` | `nil` | Optional override for import read timeout (ms) |
+| `retries` | `{ attempts: 3, base: 0.5, max: 5.0, jitter_fraction: 0.2 }` | Retry policy for batch imports |
+| `gzip` | `false` | Compress JSONL bodies (requires Typesense support) |
+| `dispatch` | `:active_job` | Controls `SearchEngine::Indexer` (rebuild/bulk) behavior. **Does not apply to ActiveRecordSyncable** (which is always inline). |
+| `queue_name` | `"search_index"` | Queue for ActiveJob |
+
+### Sources
+Settings for data ingestion adapters.
+
+```ruby
+SearchEngine.configure do |c|
+  # ActiveRecord adapter
+  c.sources.active_record.batch_size = 2000      # default: 2000
+  c.sources.active_record.readonly = true        # avoid dirty tracking (default: true)
+  c.sources.active_record.use_transaction = false # wrap in read-only transaction (default: false)
+
+  # SQL adapter
+  c.sources.sql.fetch_size = 5000                # server-side cursor batch (default: 2000)
+  c.sources.sql.statement_timeout_ms = nil       # optional per-statement timeout
+  c.sources.sql.row_shape = :auto                # :auto or :hash (default: :auto)
+
+  # Lambda adapter
+  c.sources.lambda.max_batch_size_hint = nil     # validation/metrics hint only
+end
+```
+
+| Adapter | Field | Default | Notes |
+|---|---|---|---|
+| `active_record` | `batch_size` | 2000 | ORM batching size |
+| `active_record` | `readonly` | `true` | Mark relations as readonly |
+| `active_record` | `use_transaction` | `false` | Wrap fetching in read-only transaction |
+| `sql` | `fetch_size` | 2000 | Server-side cursor batch size |
+| `sql` | `statement_timeout_ms` | `nil` | Optional per-statement timeout |
+| `sql` | `row_shape` | `:auto` | Row shape preference (`:auto` or `:hash`) |
+| `lambda` | `max_batch_size_hint` | `nil` | Validation/metrics hint only |
+
+### Mapper
+Settings for attribute mapping and coercions.
+
+```ruby
+SearchEngine.configure do |c|
+  c.mapper.strict_unknown_keys = true # raise on extra fields (default: false)
+  c.mapper.coercions = { enabled: true, rules: {} } # enable type coercions
+  c.mapper.max_error_samples = 5 # max error samples in reports (default: 5)
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `strict_unknown_keys` | `false` | When `true`, extra fields raise `InvalidField` |
+| `coercions` | `{ enabled: false, rules: {} }` | Type coercion settings (safe integer/float/bool only) |
+| `max_error_samples` | 5 | Maximum error samples included in batch reports |
+
+### Partitioning
+Settings for partitioned indexing and hooks.
+
+```ruby
+SearchEngine.configure do |c|
+  c.partitioning.default_into_resolver = nil # optional proc to resolve physical collection
+  c.partitioning.before_hook_timeout_ms = nil # timeout for before_partition hooks
+  c.partitioning.after_hook_timeout_ms = nil  # timeout for after_partition hooks
+  c.partitioning.max_error_samples = 5        # max error samples in payloads
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `default_into_resolver` | `nil` | Optional Proc to resolve default physical collection name |
+| `before_hook_timeout_ms` | `nil` | Timeout for `before_partition` hooks (ms) |
+| `after_hook_timeout_ms` | `nil` | Timeout for `after_partition` hooks (ms) |
+| `max_error_samples` | 5 | Maximum error samples in hook payloads |
+
+### Stale Deletes
+Settings for stale document cleanup operations.
+
+```ruby
+SearchEngine.configure do |c|
+  c.stale_deletes.enabled = true           # global kill switch (default: true)
+  c.stale_deletes.strict_mode = false     # block suspicious filters (default: false)
+  c.stale_deletes.timeout_ms = nil        # optional timeout for delete requests
+  c.stale_deletes.estimation_enabled = false # enable found estimation via search
+end
+```
+
+| Field | Default | Notes |
+|---|---|---|
+| `enabled` | `true` | Global kill switch for stale delete operations |
+| `strict_mode` | `false` | When `true`, blocks suspicious catch-all filters |
+| `timeout_ms` | `nil` | Optional timeout for delete requests (ms) |
+| `estimation_enabled` | `false` | Enable found estimation via search before delete |
+
+### Observability & logging
+
+```ruby
+SearchEngine.configure do |c|
+  c.observability.enabled = true      # turn on compact logging subscriber
+  c.observability.log_format = :kv    # :kv or :json
+  c.observability.max_message_length = 200
+  c.observability.include_error_messages = false
+  c.observability.emit_legacy_event_aliases = true
+end
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `enabled` | `false` | Enable compact logging subscriber automatically |
+| `log_format` | `:kv` | `:kv` or `:json` |
+| `max_message_length` | `200` | Truncation for error samples |
+| `include_error_messages` | `false` | Include short error messages in logs |
+| `emit_legacy_event_aliases` | `true` | Emit legacy aliases alongside new events |
+
+See <a href="/projects/search-engine-for-typesense/v29/observability">Observability</a> for event payloads and redaction.
+
+### Grouping UX
+
+```ruby
+SearchEngine.configure do |c|
+  c.grouping.warn_on_ambiguous = true
+end
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `warn_on_ambiguous` | `true` | Emit non-fatal warnings for ambiguous grouping combos |
+
+### Loader & console
+
+```ruby
+SearchEngine.configure do |c|
+  c.search_engine_models = "app/search_engine" # loader path
+  c.relation_print_materializes = false        # keep console inspect zero-I/O
+end
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `search_engine_models` | `"app/search_engine"` | Path (relative to Rails.root or absolute) used by the dedicated Zeitwerk loader |
+| `relation_print_materializes` | `true` | When false, `Relation#inspect` stays concise without materialization |
+
+## Validation & warnings
+
+Calling `SearchEngine.configure { ... }` validates obvious misconfigurations (bad protocol, negative timeouts, etc.). At boot, the engine logs a one-time warning if `api_key` or `default_query_by` are missing; secrets are not printed.
+
+```mermaid
+flowchart LR
+  A[ENV] -->|hydrate if nil| B[Engine initializer]
+  B --> C[SearchEngine.config]
+  C --> D[Client & Relations]
+```
+
+

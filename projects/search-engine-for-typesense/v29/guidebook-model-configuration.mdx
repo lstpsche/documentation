@@ -1,0 +1,61 @@
+---
+title: "Model configuration"
+description: "Define collections, fields, identity, and defaults."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v29/models">Models</a>, <a href="/projects/search-engine-for-typesense/v29/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/v29/configuration">Configuration</a>
+
+Use this page when you are defining a new SearchEngine model or expanding an existing one.
+
+## Define the collection and fields
+
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  collection :books
+
+  attribute :sku, :string
+  attribute :name, :string, sort: true
+  attribute :description, :string
+  attribute :publisher_id, :string
+  attribute :price, :float
+  attribute :tags, [:string], empty_filtering: true
+  attribute :store, :object, nested: { name: :string, city: :string }
+end
+```
+
+<Note>
+  Do not declare <code>attribute :id</code>. Use <code>identify_by</code> to control the Typesense document id.
+</Note>
+
+## Set identity and defaults
+
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  # ... attributes ...
+  identify_by :sku
+  query_by :name, :description
+  schema_retention keep_last: 2
+end
+```
+
+- <code>identify_by</code> controls the Typesense document id.
+- <code>query_by</code> sets a per-model default for searches.
+- <code>schema_retention</code> keeps old physical collections after swaps.
+
+## Nested fields
+
+Use <code>:object</code> or <code>[:object]</code> with <code>nested:</code> to define subfields.
+
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  attribute :retail_prices, [:object], nested: {
+    current_price: :float,
+    price_type: :string
+  }
+end
+```
+
+## Next steps
+
+- Validate field types and options in <a href="/projects/search-engine-for-typesense/v29/schema">Schema</a>.
+- Use <a href="/projects/search-engine-for-typesense/v29/indexer">Indexer</a> to map and import data.

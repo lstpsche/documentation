@@ -1,0 +1,82 @@
+---
+title: "Scopes and advanced ORM"
+description: "Compose scopes, joins, filters, and advanced query features."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v29/models">Models</a>, <a href="/projects/search-engine-for-typesense/v29/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/v29/presets">Presets</a>, <a href="/projects/search-engine-for-typesense/v29/curation">Curation</a>, <a href="/projects/search-engine-for-typesense/v29/grouping">Grouping</a>, <a href="/projects/search-engine-for-typesense/v29/faceting">Faceting</a>, <a href="/projects/search-engine-for-typesense/v29/multi-search">Multi-search</a>
+
+Use this page when you want reusable scopes or multi-step query chains.
+
+<Note>
+  Examples assume the <code>SearchEngine::Book</code> model from <a href="/projects/search-engine-for-typesense/v29/guidebook-model-configuration">Model configuration</a>.
+</Note>
+
+## Define model scopes
+
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  collection :books
+
+  scope :active, -> { where(active: true) }
+  scope :by_store, ->(store_id) { where(store_id: store_id) }
+end
+```
+
+## Combine search, filter, join, and scope
+
+```ruby
+SearchEngine::Book
+  .joins(:publisher)
+  .active
+  .where(publisher: { name: "Acme" })
+  .where(["price >= ?", 100])
+  .search("running")
+  .include_fields(:sku, :name, publisher: [:name])
+  .order(price: :asc)
+  .page(1)
+  .per(20)
+  .to_a
+```
+
+## Other common flows
+
+### Presets
+
+```ruby
+SearchEngine::Book.all.preset(:default_search, mode: :merge)
+```
+
+### Curation
+
+```ruby
+SearchEngine::Book.all.pin("book_1", "book_2").hide("book_9")
+```
+
+### Grouping and faceting
+
+```ruby
+SearchEngine::Book
+  .group_by(:publisher_id, limit: 1)
+  .facet_by(:category_id, max_values: 10)
+```
+
+### Multi-search
+
+```ruby
+SearchEngine.multi_search(common: { query_by: "name" }) do |m|
+  m.add :books, SearchEngine::Book.all.per(10)
+  m.add :publishers, SearchEngine::Publisher.all.per(5)
+end
+```
+
+### Mutations
+
+```ruby
+SearchEngine::Book.upsert(record: ::Book.first)
+SearchEngine::Book.where(status: "archived").delete_all
+```
+
+## Next steps
+
+- Tune curation and presets in <a href="/projects/search-engine-for-typesense/v29/curation">Curation</a> and <a href="/projects/search-engine-for-typesense/v29/presets">Presets</a>.
+- Learn grouping details in <a href="/projects/search-engine-for-typesense/v29/grouping">Grouping</a>.

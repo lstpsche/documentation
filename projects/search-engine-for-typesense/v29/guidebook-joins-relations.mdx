@@ -1,0 +1,138 @@
+---
+title: "JOINs and relations"
+description: "Declare associations, query across collections, and model common relationship patterns."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v29/joins">JOINs</a>, <a href="/projects/search-engine-for-typesense/v29/references-joins-deep-dive">References & JOINs — Deep dive</a>, <a href="/projects/search-engine-for-typesense/v29/joins-selection-grouping">JOINs, Selection, and Grouping</a>, <a href="/projects/search-engine-for-typesense/v29/cascading">Cascading</a>
+
+Use this page when you need to join across collections or model relationships.
+
+## Declare associations
+
+```ruby app/search_engine/publisher.rb
+class SearchEngine::Publisher < SearchEngine::Base
+  collection :publishers
+  attribute :publisher_id, :string
+  attribute :name, :string
+
+  identify_by :publisher_id
+end
+```
+
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  collection :books
+  attribute :publisher_id, :string
+  attribute :name, :string
+
+  belongs_to :publisher
+end
+```
+
+## Query across collections
+
+```ruby
+SearchEngine::Book
+  .joins(:publisher)
+  .where(publisher: { name: "Acme" })
+  .to_a
+```
+
+## One-to-one relations
+
+```ruby app/search_engine/user.rb
+class SearchEngine::User < SearchEngine::Base
+  collection :users
+  attribute :user_id, :string
+  attribute :email, :string
+
+  identify_by :user_id
+  has_one :profile, foreign_key: :user_id
+end
+```
+
+```ruby app/search_engine/profile.rb
+class SearchEngine::Profile < SearchEngine::Base
+  collection :profiles
+  attribute :user_id, :string
+  attribute :display_name, :string
+
+  belongs_to :user, local_key: :user_id, foreign_key: :user_id
+end
+```
+
+```ruby
+SearchEngine::User.find("user_1").profile
+```
+
+## One-to-many relations
+
+```ruby app/search_engine/author.rb
+class SearchEngine::Author < SearchEngine::Base
+  collection :authors
+  attribute :author_id, :string
+  attribute :name, :string
+
+  has_many :books, foreign_key: :author_id
+end
+```
+
+```ruby app/search_engine/book.rb
+class SearchEngine::Book < SearchEngine::Base
+  collection :books
+  attribute :author_id, :string
+  attribute :title, :string
+
+  belongs_to :author, local_key: :author_id, foreign_key: :author_id
+end
+```
+
+```ruby
+SearchEngine::Author.find("author_1").books.where(published: true)
+```
+
+## Many-to-many relations
+
+```ruby app/search_engine/enrollment.rb
+class SearchEngine::Enrollment < SearchEngine::Base
+  collection :enrollments
+  attribute :student_id, :string
+  attribute :course_id, :string
+end
+```
+
+```ruby app/search_engine/student.rb
+class SearchEngine::Student < SearchEngine::Base
+  collection :students
+  attribute :student_id, :string
+  attribute :name, :string
+
+  has_many :enrollments, foreign_key: :student_id
+end
+```
+
+```ruby app/search_engine/course.rb
+class SearchEngine::Course < SearchEngine::Base
+  collection :courses
+  attribute :course_id, :string
+  attribute :title, :string
+
+  has_many :enrollments, foreign_key: :course_id
+end
+```
+
+```ruby
+SearchEngine::Course
+  .joins(:enrollments)
+  .where(enrollments: { student_id: "student_1" })
+  .to_a
+```
+
+<Tip>
+  Use <code>belongs_to_many</code> when a single local key maps to many target records via a shared foreign key.
+</Tip>
+
+## Next steps
+
+- Learn join rules and nested selection in <a href="/projects/search-engine-for-typesense/v29/joins">JOINs</a>.
+- Explore cascading reindex behavior in <a href="/projects/search-engine-for-typesense/v29/cascading">Cascading</a>.

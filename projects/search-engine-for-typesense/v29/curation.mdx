@@ -1,0 +1,180 @@
+---
+title: "Curation"
+description: "Pin or hide hits by ID, attach override tags, and optionally filter hidden hits from the materialized view."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v29/observability#logging">Observability</a>, <a href="/projects/search-engine-for-typesense/v29/troubleshooting#curation">Troubleshooting → Curation</a>
+
+Curate results by pinning or hiding specific IDs, optionally tagging with override tags, and optionally filtering hidden hits from the materialized view. Purely declarative; encoded as body params only.
+
+## Overview
+
+- <strong>Pin</strong> hits by ID to the top of results (stable first-occurrence order)
+- <strong>Hide</strong> hits by ID (hide-wins when an ID is both pinned and hidden)
+- <strong>Override tags</strong> are optional body-only tags
+- <strong>Filter flag</strong> <code>filter_curated_hits</code> optionally excludes hidden hits from the curated view
+- <strong>Composes with</strong> selection, presets, grouping, pagination; does not alter URL/common params
+
+## DSL
+
+Immutable chainers on <code>Relation</code> (copy-on-write). Inputs are normalized (coerced to String, blank dropped), arrays flattened one level, and lists de-duplicated while preserving first occurrence order.
+
+- <code>pin(*ids)</code> — append to pinned list (stable-dedupe)
+- <code>hide(*ids)</code> — append to hidden list (set semantics)
+- <code>curate(pin: [], hide: [], override_tags: [], filter_curated_hits: nil|true|false)</code> — replace provided keys; omit to retain
+- <code>clear_curation</code> — remove all curation state from the relation
+
+State shape on the relation:
+
+- <code>pinned: Array&lt;String&gt;</code>
+- <code>hidden: Array&lt;String&gt;</code>
+- <code>override_tags: Array&lt;String&gt;</code>
+- <code>filter_curated_hits: true | false | nil</code>
+
+Inspect/explain:
+
+- <code>inspect</code> emits a compact token only when non-empty, e.g. <code>curation=p:[p_12,p_34]|h:[p_99]|tags:[homepage]|fch:false</code>
+- <code>explain</code> adds a concise curation summary and a conflicts line when overlaps/limits occur
+
+Insert:
+
+```ruby
+# Pin two products to the top and hide one, with an override tag
+SearchEngine::Book
+  .pin("p_12", "p_34")
+  .hide("p_99")
+  .curate(override_tags: ["homepage"], filter_curated_hits: false)
+
+# One‑shot
+SearchEngine::Book.curate(pin: %w[p_12 p_34], hide: %w[p_99], override_tags: %w[homepage])
+```
+
+## Compiler mapping
+
+Curation state maps to Typesense body params and never appears in URL/common params. Empty arrays are omitted; <code>filter_curated_hits</code> is omitted when <code>nil</code>.
+
+| State key             | Example value             | Param key             | Encoded value         |
+| --------------------- | ------------------------- | --------------------- | --------------------- |
+| `pinned`              | `["p_1","p_2"]`             | `pinned_hits`         | `"p_1,p_2"`             |
+| `hidden`              | `"p9"`                    | `hidden_hits`         | `"p9"`                |
+| `override_tags`       | `["homepage","campaign"]` | `override_tags`       | `"homepage,campaign"` |
+| `filter_curated_hits` | `true`                    | `filter_curated_hits` | `true`                |
+
+- Keys are omitted when arrays are empty or when <code>filter_curated_hits</code> is <code>nil</code>
+- Ordering is deterministic; <code>pinned</code> preserves first-occurrence order
+
+```mermaid
+flowchart TD
+  A[Relation.curation state] --> B[Encoder in to_typesense_params]
+  B --> C{present?}
+  C -- pinned --> D[pinned_hits: join(',')]
+  C -- hidden --> E[hidden_hits: join(',')]
+  C -- tags --> F[override_tags: join(',')]
+  C -- filter --> G[filter_curated_hits: boolean]
+  D --> H[Body params]
+  E --> H
+  F --> H
+  G --> H
+```
+
+Insert:
+
+```ruby
+rel = SearchEngine::Book
+        .curate(pin: %w[p_1 p_2], hide: %w[p9], override_tags: %w[homepage], filter_curated_hits: true)
+rel.to_typesense_params
+# => {
+#   q: "*", query_by: "name, description",
+#   pinned_hits: "p_1,p_2", hidden_hits: "p9",
+#   filter_curated_hits: true, override_tags: "homepage"
+# }
+```
+
+## Guardrails & errors
+
+Validation is applied after normalization. Overlaps and limits are recorded for <code>explain</code> and observability.
+
+### Rules
+
+| Rule | Behavior |
+| --- | --- |
+| ID format | <code>SearchEngine.config.curation.id_regex</code> (default <code>/\A[\w\-:\.]+\z/</code>) applied to curated IDs and override tags |
+| Deduplication | <code>pinned</code> stable-dedupes (first occurrence wins); <code>hidden</code> set-dedupes (first-seen order preserved) |
+| Limits | <code>max_pins</code> (default 50) and <code>max_hidden</code> (default 200) enforced post-normalization |
+| Precedence | When an ID exists in both lists, <strong>hide wins</strong> (removed from <code>pinned</code>, recorded as conflict) |
+
+### Errors
+
+| Error | When |
+| --- | --- |
+| `InvalidCuratedId` | Curated ID fails the allowed pattern |
+| `CurationLimitExceeded` | Pinned or hidden list exceeds configured limit |
+| `InvalidOverrideTag` | Override tag is blank or fails the allowed pattern |
+
+Config example:
+
+```ruby
+SearchEngine.configure do |c|
+  c.curation = OpenStruct.new(max_pins: 50, max_hidden: 200, id_regex: /\A[\w\-:\.]+\z/)
+end
+```
+
+## Multi-search
+
+Per-search independence: each <code>m.add</code> relation carries its own curation keys in its body. Pinned order is preserved; omission rules apply; <code>filter_curated_hits</code> is scoped per entry.
+
+Insert:
+
+```ruby
+res = SearchEngine.multi_search do |m|
+  m.add :books, SearchEngine::Book.curate(pin: %w[p_1 p_2])
+  m.add :publishers,   SearchEngine::Publisher.curate(hide: %w[b9 b10], filter_curated_hits: true)
+end
+```
+
+See also: <a href="/projects/search-engine-for-typesense/v29/multi-search#curation-in-multi-search">Multi‑search</a>
+
+## Materializers & explain
+
+Materializers reuse the memoized single response and apply curation in-memory.
+
+- Ordering: pins first (declared order, present IDs only), then remainder in original order. <strong>Hide-wins</strong>.
+- Filtering: when <code>filter_curated_hits: true</code>, hidden hits are excluded from iteration and counts.
+- Counts: when filtering is on, <code>count</code> reflects the curated view size; <code>exists?</code> follows server totals. To check curated emptiness, use <code>count &gt; 0</code>.
+- <code>explain</code> adds a curation summary and a conflicts line.
+
+Explain excerpt:
+
+```
+Curation: pinned=2 hidden=1 filter_curated_hits=false override_tags=[homepage]
+Conflicts: [p_1 (both pinned & hidden → hidden)]
+```
+
+```mermaid
+flowchart TD
+  R[Memoized response hits] --> P[Build pinned segment (declared order, present IDs only)]
+  R --> U[Unpinned remainder (original order)]
+  P --> O[Concatenate]
+  U --> O
+  O --> F{filter_curated_hits?}
+  F -- yes --> X[Drop hidden]
+  F -- no --> Y[Keep hidden]
+  X --> V[Curated view (materializers iterate)]
+  Y --> V[Curated view (materializers iterate)]
+```
+
+## Observability
+
+Events are counts/flags only; IDs/tags are redacted. A compact logging subscriber appends a short curation segment to single-search lines and structured JSON fields when present.
+
+- <code>search_engine.curation.compile</code> — once per compile when curation state exists
+  - Payload: <code>pinned_count</code>, <code>hidden_count</code>, <code>has_override_tags</code>, <code>filter_curated_hits</code>
+- <code>search_engine.curation.conflict</code> — emitted when overlaps or limits are detected; at most once per compile
+  - Payload: <code>type</code> (<code>:overlap</code>|<code>:limit_exceeded</code>), <code>count</code>, optional <code>limit</code>
+
+Compact logging (examples; no IDs/tags):
+
+- Text: <code>[se.search] collection=products status=200 duration=12.3ms cu=p:2|h:1|f:false|t:1</code>
+- JSON: `{ "event":"search", "collection":"books", "curation_pinned_count":2, "curation_hidden_count":1, "curation_has_override_tags":true, "curation_filter_flag":false }`
+
+
