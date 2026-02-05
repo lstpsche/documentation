@@ -14,7 +14,7 @@
         "tab": "SearchEngine for Typesense",
         "versions": [
           {
-            "version": "30.1",
+            "version": "30.1.0",
             "groups": [
               {
                 "group": "Overview",
