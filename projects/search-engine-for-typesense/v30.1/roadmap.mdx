@@ -53,6 +53,10 @@ This page tracks what is currently developed (🟣), verified (debugged 🟢), a
   - Docs: <a href="https://typesense.org/docs/29.0/api/search.html#faceting" target="_blank">Faceting</a>
 - 🟣 Ranking/typo/prefix: <code>num_typos</code>, <code>drop_tokens_threshold</code>, <code>prioritize_exact_match</code>, <code>query_by_weights</code>, <code>infix</code> (via DSL <code>prefix</code>)
   - Docs: <a href="https://typesense.org/docs/29.0/api/search.html" target="_blank">Search parameters</a>
+- 🟣 Vector search (ANN, <code>vector_query</code>, hybrid, find similar, historical queries)
+  - Schema: <code>embedding</code> macro with auto-embed and external modes
+  - Query: <code>vector_search</code>, <code>find_similar</code>, sort by vector distance
+  - Docs: <a href="/projects/search-engine-for-typesense/v30.1/vector-search">Vector Search</a>
 
 ## Synonyms & Stopwords
 
@@ -74,8 +78,6 @@ This page tracks what is currently developed (🟣), verified (debugged 🟢), a
 
 - 🔴 Geo search (filters and distance sort)
   - Docs: <a href="https://typesense.org/docs/29.0/api/search.html#geosearch" target="_blank">Geo search</a>
-- 🔴 Vector search (ANN, `vector_query`, hybrid)
-  - Docs: <a href="https://typesense.org/docs/29.0/api/vector-search.html" target="_blank">Vector Search</a>
 - 🔴 Overrides management (CRUD)
   - Docs: <a href="https://typesense.org/docs/29.0/api/overrides.html" target="_blank">Overrides API</a>
 - 🔴 Exhaustive/cutoff knobs: <code>exhaustive_search</code>, <code>search_cutoff_ms</code>

@@ -64,11 +64,15 @@ Validation: disallow both `include_fields` and `exclude_fields` hiding all highl
 
 Notes: Exact `filter_by` grammar for geo is versioned; validate at compile‑time with doc‑linked hints. [TS‑Geo]
 
-### 6) Vectors / AI (vector fields, ANN params, hybrid)
+### 6) Vectors / AI (vector fields, ANN params, hybrid) -- Shipped
 
 | Capability | Typesense params (authoritative names) | Since | Constraints & limits | Interactions | Defaults (server) | Proposed DSL surface (back‑compat) | Compiler mapping (Relation → params) | Migration notes | Risk | Ship bucket |
 | ---------- | -------------------------------------- | ----- | -------------------- | ------------ | ----------------- | ---------------------------------- | ------------------------------------ | --------------- | ---- | ----------- |
-| Vector search | `vector_query` with syntax like `embedding:([..], num_candidates: N)`; schema `vector` field type [TS‑Vector] | TBD | Vector dimensionality must match schema; high `num_candidates` affects latency. | Hybrid with keyword search typically combines ranks; check doc for precedence knobs. | N/A | `vectors(query:, field:, num_candidates: nil, weight: nil)` | Map to `vector_query` string for the given field; redact vector payloads from logs; optionally pass hybrid weights if server supports. | Additive; no effect unless used. | H | Later |
+| Vector search | `vector_query` with syntax `field:([vector], k:N, alpha:0.8, ...)`; schema `float[]` field with `embed` block or `num_dim` [TS‑Vector] | 30.1 | Vector dimensionality must match schema; high `k` affects latency. | Hybrid with keyword search uses rank fusion (`alpha`); embedding field auto-appended to `query_by`. | Embedding field auto-excluded from response. | `embedding` macro (schema), `vector_search(field, k:, alpha:, ...)`, `find_similar(id, field:)` | Compile to `vector_query` string; auto `query_by` in hybrid mode; auto `exclude_fields`; `order(vector_distance:)` sort alias. | Additive; no effect unless used. | Resolved | Shipped |
+
+<Info>
+Vector search is now fully implemented. See the <a href="/projects/search-engine-for-typesense/v30.1/vector-search">Vector Search guide</a> for DSL reference, configuration, and examples.
+</Info>
 
 ### 7) Hit limits (caps, per‑group limits, pagination interactions)
 
@@ -89,7 +93,7 @@ Notes: Exact `filter_by` grammar for geo is versioned; validate at compile‑tim
   - Union across collections: requires client‑side merge/dedupe policy and observability; define deterministic interleaving before shipping. Prereq: merge policy & perf guardrails. Unknowns: cross‑search ranking.
   - Synonyms/Stopwords management: scope belongs to admin/CLI; wire separately from Relation DSL. Add doctor checks and docs; no query‑time flag exposed in docs today.
   - Geo: finalize grammar coverage and unit handling; add compiler validations tied to schema <code>geopoint</code>. Prereq: stable grammar reference per server version.
-  - Vectors/Hybrid: high‑variance feature set; finalize <code>vector_query</code> grammar, hybrid weighting, and redaction. Prereq: server version gating and perf SLOs.
+  - ~~Vectors/Hybrid~~: **Shipped.** See <a href="/projects/search-engine-for-typesense/v30.1/vector-search">Vector Search</a>.
   - Advanced faceting extras (nested/sampling/custom sort): out of scope until server primitives exist.
 
 - <strong>Flags & defaults</strong>
@@ -123,9 +127,7 @@ Per capability:
   - Open: Exact <code>filter_by</code> grammar variants for geo across versions; supported distance sort notations. [TS‑Geo]
   - Risk: M — incorrect compile grammar. Mitigation: strict compile‑time validation and doc‑linked hints.
 
-- <strong>Vectors/Hybrid</strong>
-  - Open: Confirm <code>vector_query</code> grammar (e.g., <code>num_candidates</code>, hybrid weighting knobs) and version gates. [TS‑Vector]
-  - Risk: H — perf/costs + redaction. Mitigation: feature flag, strict redaction, and SLO‑based guardrails.
+- <strong>Vectors/Hybrid</strong> — **Resolved.** Shipped with full DSL: <code>embedding</code> macro, <code>vector_search</code>, <code>find_similar</code>, hybrid alpha weighting, auto‑exclude, redaction. See <a href="/projects/search-engine-for-typesense/v30.1/vector-search">Vector Search</a>.
 
 - <strong>Hit limits</strong>
   - Open: Interactions between <code>group_limit</code>, <code>group_by</code>, and <code>per_page</code> across edge cases; clarify <code>exhaustive_search</code> semantics with <code>search_cutoff_ms</code>. [TS‑Pagination]

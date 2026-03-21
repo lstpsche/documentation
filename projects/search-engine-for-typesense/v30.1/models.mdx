@@ -443,6 +443,23 @@ end
 
 See also how these options appear in the compiled schema and diffs in <a href="/projects/search-engine-for-typesense/v30.1/schema">Schema</a> (keys: <code>locale</code>, <code>sort</code>, <code>optional</code>, <code>infix</code>).
 
+### Embedding fields (vector search)
+
+Use the `embedding` macro to declare auto-embedding or external-embedding vector fields. The macro registers a `:vector` attribute internally and builds the Typesense `embed` block at schema compile time.
+
+```ruby
+class SearchEngine::Product < SearchEngine::Base
+  collection 'products'
+
+  attribute :name, :string, sort: true
+  attribute :description, :string
+
+  embedding from: %i[name description]
+end
+```
+
+See <a href="/projects/search-engine-for-typesense/v30.1/vector-search">Vector Search</a> for all `embedding` forms, name resolution rules, configuration, and query DSL.
+
 ### Declaring nested subfields with `nested`
 
 As an alternative to inline <code>nested:</code> on <code>attribute</code>, you can declare subfields after the base attribute is defined as <code>:object</code> or <code>[:object]</code>:

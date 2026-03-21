@@ -261,6 +261,24 @@ end
 | --- | --- | --- |
 | `warn_on_ambiguous` | `true` | Emit non-fatal warnings for ambiguous grouping combos |
 
+### Embedding
+
+Settings for vector search auto-embedding. See <a href="/projects/search-engine-for-typesense/v30.1/vector-search">Vector Search</a> for the full guide.
+
+```ruby
+SearchEngine.configure do |c|
+  c.embedding.model = 'ts/all-MiniLM-L12-v2'
+  c.embedding.api_key = ENV['OPENAI_API_KEY'] # only for remote providers
+  c.embedding.model_config = {}               # extra keys merged into embed block
+end
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `model` | `nil` | Typesense model name (e.g. `ts/all-MiniLM-L12-v2`, `openai/text-embedding-3-small`) |
+| `api_key` | `nil` | API key for remote embedding providers |
+| `model_config` | `nil` | Extra keys merged into the Typesense `embed.model_config` block |
+
 ### Loader & console
 
 ```ruby

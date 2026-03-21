@@ -61,6 +61,7 @@
                   "projects/search-engine-for-typesense/v30.1/collections-graph",
                   "projects/search-engine-for-typesense/v30.1/cookbook-queries",
                   "projects/search-engine-for-typesense/v30.1/synonyms-stopwords",
+                  "projects/search-engine-for-typesense/v30.1/vector-search",
                   "projects/search-engine-for-typesense/v30.1/deferred-typesense-features"
                 ]
               },
