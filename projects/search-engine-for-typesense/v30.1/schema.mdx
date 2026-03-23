@@ -71,6 +71,12 @@ Joins:
 
 - For joined filters like `.joins(:brand).where(brand: { promotion_ids: [] })`, the rewrite applies only if the joined collection has <code>attribute :promotion_ids, [:string], empty_filtering: true</code> (hidden <code>$brand.promotion_ids_empty</code> exists). Otherwise an empty array remains invalid.
 
+### Unindexed embed sources
+
+Fields declared with `index: false` are normally omitted from the compiled schema. However, when such a field is listed in an embedding's `from:` array, the compiler keeps it in the schema with Typesense-native `"index": false` and forced `"optional": true`. This lets the embedding model read the value without keyword-indexing it.
+
+No `<name>_blank` hidden field is generated for these fields because the DSL-level `optional` is not set — the `"optional": true` in the Typesense payload is an implementation detail required by Typesense for unindexed fields.
+
 ### System field: `doc_updated_at`
 
 - Always present on every collection. **Cannot be disabled**—the gem automatically injects this field during document creation/upsert.

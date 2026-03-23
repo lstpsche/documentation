@@ -80,6 +80,23 @@ class SearchEngine::Product < SearchEngine::Base
 end
 ```
 
+### Unindexed embed sources
+
+If an embed source field is only needed for embedding (not for keyword search, filtering, or sorting), declare it with `index: false`. The schema compiler detects the `from:` reference and emits the field with Typesense-native `"index": false` instead of omitting it entirely. This avoids keyword-indexing overhead and the auto-generated `*_blank` hidden field.
+
+```ruby
+class SearchEngine::Product < SearchEngine::Base
+  collection 'products'
+
+  attribute :name, :string, sort: true
+  attribute :brand_name, :string, index: false  # stored for embedding, not keyword-indexed
+
+  embedding from: %i[name brand_name]
+end
+```
+
+The compiled schema will include `brand_name` as `{ "name": "brand_name", "type": "string", "index": false, "optional": true }`. Typesense stores the value on disk and feeds it to the embedding model, but it consumes no in-memory index space.
+
 ### External embeddings
 
 When your application generates vectors outside Typesense, declare `num_dim:` without `from:`. The mapper expects your `map` block to supply a float array of the declared dimension.
