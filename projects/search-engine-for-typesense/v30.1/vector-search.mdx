@@ -158,6 +158,31 @@ SearchEngine::Product
 
 The compiler auto-appends `product_embedding` to `query_by` so Typesense performs rank fusion between keyword and vector results.
 
+### Field auto-resolution
+
+When a model declares exactly **one** embedding, the `field` argument can be omitted entirely. The gem resolves it automatically:
+
+```ruby
+# Given a model with a single embedding declaration:
+class SearchEngine::Article < SearchEngine::Base
+  attribute :title, :string
+  attribute :body, :string
+  embedding from: %i[title body]
+end
+
+# These two calls are equivalent:
+SearchEngine::Article.search("climate change").vector_search
+SearchEngine::Article.search("climate change").vector_search(:article_embedding)
+```
+
+This makes `vector_search` act as a behaviour modifier — just chain it to enable semantic/hybrid mode.
+
+<Warning>
+Auto-resolution raises `InvalidVectorQuery` when the model has **zero** or **multiple** embeddings. In those cases, pass the field explicitly.
+</Warning>
+
+When `k:` is omitted, Typesense applies its server default (10). You only need to specify `k:` when you want a different value.
+
 ## Hybrid search
 
 Combine keyword and vector results with an explicit alpha weight. Typesense uses rank fusion:
@@ -189,6 +214,12 @@ Start with `alpha: 0.7` and tune based on your dataset. Higher alpha favours sem
 ```ruby
 SearchEngine::Product
   .find_similar("product-42", field: :product_embedding, k: 20)
+```
+
+When the model has a single embedding, `field:` can be omitted:
+
+```ruby
+SearchEngine::Article.find_similar("article-7", k: 20)
 ```
 
 Chain filters to refine results:
@@ -349,15 +380,15 @@ rel.dry_run!
 ### `vector_search`
 
 ```ruby
-def vector_search(field, k: nil, alpha: nil, query: nil, id: nil,
+def vector_search(field = nil, k: nil, alpha: nil, query: nil, id: nil,
                   distance_threshold: nil, queries: nil, weights: nil,
                   ef: nil, flat_search_cutoff: nil)
 ```
 
 | Param | Type | Purpose |
 |---|---|---|
-| `field` | Symbol, String | Embedding field name (required) |
-| `k:` | Integer | Number of nearest neighbors |
+| `field` | Symbol, String, nil | Embedding field name. Auto-resolved when the model has exactly one embedding. |
+| `k:` | Integer | Number of nearest neighbors (server default: 10) |
 | `alpha:` | Float (0.0--1.0) | Hybrid blend weight |
 | `query:` | Array&lt;Numeric&gt; | Explicit embedding vector |
 | `id:` | #to_s | Document ID for similarity search |
@@ -372,10 +403,10 @@ Mutually exclusive modes: `query:`, `id:`, and `queries:`. Providing more than o
 ### `find_similar`
 
 ```ruby
-def find_similar(document_id, field:, k: nil, distance_threshold: nil)
+def find_similar(document_id, field: nil, k: nil, distance_threshold: nil)
 ```
 
-Sugar over `vector_search(field, id: document_id, ...)`.
+Sugar over `vector_search(field, id: document_id, ...)`. When `field:` is omitted, the sole embedding on the model is used automatically (same resolution as `vector_search`).
 
 ## Observability
 

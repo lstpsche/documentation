@@ -114,8 +114,8 @@ SearchEngine::Book
 | `use_synonyms(val)` | Enable/disable synonyms | `enable_synonyms` |
 | `use_stopwords(val)` | Enable/disable stopwords (inverted) | `remove_stop_words` |
 | `unscope(*parts)` | Remove relation state (e.g., `:where`, `:order`, `:select`, `:limit`, `:offset`, `:page`, `:per`) | N/A (state cleared) |
-| `vector_search(field, k:, alpha:, ...)` | Semantic / hybrid / ANN search on an embedding field. Last call wins. | `vector_query` |
-| `find_similar(id, field:, k:, ...)` | Find documents similar to a given document ID (sugar over `vector_search` with `id:`) | `vector_query` |
+| `vector_search(field = nil, k:, alpha:, ...)` | Semantic / hybrid / ANN search on an embedding field. `field` auto-resolved when the model has one embedding. Last call wins. | `vector_query` |
+| `find_similar(id, field: nil, k:, ...)` | Find documents similar to a given document ID (sugar over `vector_search` with `id:`). `field:` auto-resolved when the model has one embedding. | `vector_query` |
 
 See <a href="/projects/search-engine-for-typesense/v30.1/vector-search">Vector Search</a> for configuration, `embedding` macro, and query examples.
 
