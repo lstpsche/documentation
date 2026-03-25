@@ -152,7 +152,7 @@ just like in sequential processing. Failed batches are properly counted in the s
 
 When indexation is run inside <code>Schema.apply!</code> (e.g., via <code>.index_collection</code>), a non-ok
 result raises <code>SearchEngine::Errors::IndexationAborted</code>, which prevents the alias swap. The
-partially-indexed new physical is left intact for inspection. See
+partially-indexed new physical is automatically cleaned up to prevent orphan accumulation. See
 <a href="/projects/search-engine-for-typesense/v30.1/schema#failed-indexation-safety">Schema → Failed indexation safety</a>.
 
 ### Live progress rendering

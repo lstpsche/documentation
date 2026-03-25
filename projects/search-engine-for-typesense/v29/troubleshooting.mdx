@@ -70,12 +70,11 @@ Related: <a href="/projects/search-engine-for-typesense/v29/observability">Obser
   - Retention may be insufficient; ensure previous physical retained
   - See <a href="/projects/search-engine-for-typesense/v29/schema#api">Schema → API</a>
 - Alias not swapped after apply
-  - <code>IndexationAborted</code> prevented the swap because indexing returned a non-ok status
-  - Inspect the new physical collection for import errors and retry
+  - <code>IndexationAborted</code> prevented the swap because indexing returned a non-ok status; the new physical was auto-deleted
+  - Fix import errors and retry
   - See <a href="/projects/search-engine-for-typesense/v29/schema#failed-indexation-safety">Schema → Failed indexation safety</a>
 - Orphaned physical collections accumulating
-  - Failed blue/green deployments leave physicals that no alias points to
-  - Run <code>SearchEngine::Schema.prune_orphans!</code> or <code>rails 'search_engine:schema:prune_orphans'</code>
+  - Since v30.1.6.14, failed/interrupted applies auto-clean the new physical. For older orphans, run <code>SearchEngine::Schema.prune_orphans!</code> or <code>rails 'search_engine:schema:prune_orphans'</code>
   - See <a href="/projects/search-engine-for-typesense/v29/schema#orphan-pruning">Schema → Orphan pruning</a>
 
 ## Indexer

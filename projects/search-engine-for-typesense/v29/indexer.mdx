@@ -143,7 +143,7 @@ When the graceful-shutdown timeout is exceeded (default: 3600 seconds), the pool
 
 When a batch fails, the error is caught and recorded with full statistics (document count, failure details) just like in sequential processing. Failed batches are properly counted in the summary's <code>docs_total</code>, <code>failed_total</code>, and <code>batches</code> array to ensure accurate reporting.
 
-When indexation is run inside <code>Schema.apply!</code> (e.g., via <code>.index_collection</code>), a non-ok result raises <code>SearchEngine::Errors::IndexationAborted</code>, which prevents the alias swap. The partially-indexed new physical is left intact for inspection. See <a href="/projects/search-engine-for-typesense/v29/schema#failed-indexation-safety">Schema → Failed indexation safety</a>.
+When indexation is run inside <code>Schema.apply!</code> (e.g., via <code>.index_collection</code>), a non-ok result raises <code>SearchEngine::Errors::IndexationAborted</code>, which prevents the alias swap. The partially-indexed new physical is automatically cleaned up to prevent orphan accumulation. See <a href="/projects/search-engine-for-typesense/v29/schema#failed-indexation-safety">Schema → Failed indexation safety</a>.
 
 ### Live progress rendering
 

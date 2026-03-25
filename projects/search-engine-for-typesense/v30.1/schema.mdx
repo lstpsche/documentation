@@ -167,7 +167,7 @@ sequenceDiagram
 - Physical name format: <code>"#{logical}_YYYYMMDD_HHMMSS_###"</code> (3-digit zero-padded sequence).
 - Alias equals the logical name (e.g., <code>products</code>). Swap is performed via a single upsert call, which the server handles atomically.
 - Idempotent: if alias already points to the new physical, swap is a no-op.
-- Reindexing is required. Provide a block to <code>apply!</code> or implement <code>klass.reindex_all_to(physical_name)</code> to perform bulk import. On failure, no alias swap occurs and the new physical remains for inspection.
+- Reindexing is required. Provide a block to <code>apply!</code> or implement <code>klass.reindex_all_to(physical_name)</code> to perform bulk import. On failure or interruption, no alias swap occurs and the new physical collection is automatically deleted to prevent orphan accumulation.
 
 <Info>
   Creating a physical collection manually, importing into it, and calling <code>Client#upsert_alias</code> directly will NOT trigger retention cleanup. Old physical collections remain until removed explicitly. Retention cleanup only runs as part of <code>Schema.apply!</code> (and the <code>search_engine:schema:apply[...]</code> task), after a successful alias swap.
@@ -205,13 +205,15 @@ Typical operational pattern:
 When <code>Schema.apply!</code> is used with the high-level <code>.index_collection</code> flow, the engine
 monitors indexation results. If the result status is not <code>:ok</code> (e.g., <code>:partial</code> or
 <code>:failed</code>), the block raises <code>SearchEngine::Errors::IndexationAborted</code>, which prevents the
-alias swap. The newly created physical collection is left intact for inspection.
+alias swap. The newly created physical collection is automatically cleaned up by the <code>ensure</code>
+block in <code>apply!</code>, preventing orphan accumulation. The same cleanup applies when indexing is
+interrupted (e.g., via <code>Ctrl+C</code>).
 
-This ensures the previous (fully-indexed) physical remains active and serving queries even when a fresh reindex encounters errors.
+This ensures the previous (fully-indexed) physical remains active and serving queries even when a fresh reindex encounters errors, without leaving dangling collections behind.
 
 ### Orphan pruning
 
-Physical collections can accumulate when blue/green deployments fail before the alias swap occurs.
+Physical collections from older gem versions or edge cases (e.g., cleanup failure during apply) can accumulate.
 <code>Schema.prune_orphans!</code> scans all collections matching the timestamped naming pattern
 (<code>logical_YYYYMMDD_HHMMSS_###</code>) and drops any that are not the target of an alias.
 
@@ -237,8 +239,8 @@ See also: <a href="/projects/search-engine-for-typesense/v30.1/client">Client</a
 
 - <strong>Reindex step missing</strong>: Provide a block to <code>apply!</code> or implement <code>klass.reindex_all_to(name)</code>.
 - <strong>Retention errors</strong>: Ensure <code>keep_last</code> is set appropriately; rollback requires a previous retained physical.
-- <strong>Orphaned physicals accumulating</strong>: Run <code>Schema.prune_orphans!</code> or the <code>schema:prune_orphans</code> task to clean up physicals left by failed deployments.
-- <strong>Alias not swapped after apply</strong>: If indexation returned a non-ok status, <code>IndexationAborted</code> prevented the swap. Inspect the new physical and retry, or fix import errors first.
+- <strong>Orphaned physicals accumulating</strong>: Since v30.1.6.14, failed or interrupted applies auto-delete the new physical. For older orphans, run <code>Schema.prune_orphans!</code> or the <code>schema:prune_orphans</code> task.
+- <strong>Alias not swapped after apply</strong>: If indexation returned a non-ok status, <code>IndexationAborted</code> prevented the swap and the new physical was cleaned up. Fix import errors and retry.
 
 Backlinks: <a href="https://github.com/lstpsche/search-engine-for-typesense#readme" target="_blank">README</a>, <a href="/projects/search-engine-for-typesense/v30.1/indexer">Indexer</a>
 
