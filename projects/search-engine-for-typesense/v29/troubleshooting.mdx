@@ -69,6 +69,14 @@ Related: <a href="/projects/search-engine-for-typesense/v29/observability">Obser
 - Rollback unavailable
   - Retention may be insufficient; ensure previous physical retained
   - See <a href="/projects/search-engine-for-typesense/v29/schema#api">Schema → API</a>
+- Alias not swapped after apply
+  - <code>IndexationAborted</code> prevented the swap because indexing returned a non-ok status
+  - Inspect the new physical collection for import errors and retry
+  - See <a href="/projects/search-engine-for-typesense/v29/schema#failed-indexation-safety">Schema → Failed indexation safety</a>
+- Orphaned physical collections accumulating
+  - Failed blue/green deployments leave physicals that no alias points to
+  - Run <code>SearchEngine::Schema.prune_orphans!</code> or <code>rails 'search_engine:schema:prune_orphans'</code>
+  - See <a href="/projects/search-engine-for-typesense/v29/schema#orphan-pruning">Schema → Orphan pruning</a>
 
 ## Indexer
 
@@ -78,6 +86,10 @@ Related: <a href="/projects/search-engine-for-typesense/v29/observability">Obser
 - Memory spikes
   - Ensure streaming JSONL and avoid materializing large arrays
   - See <a href="/projects/search-engine-for-typesense/v29/indexer#memory-notes">Indexer → Memory notes</a>
+- PartitionTimeout during parallel imports
+  - The pool exceeded its graceful-shutdown timeout; some partitions were not processed
+  - Check for slow partitions or increase <code>timeout_ms</code>
+  - See <a href="/projects/search-engine-for-typesense/v29/indexer#parallel-batch-processing">Indexer → Parallel batch processing</a>
 
 ## Testing
 
@@ -140,5 +152,7 @@ The gem provides a structured error hierarchy under `SearchEngine::Errors`.
 | `InvalidGroup` | Grouping DSL used with invalid inputs. | Fix field names, limits, or missing_values. |
 | `UnsupportedGroupField` | Grouping references joined/path fields. | Use base fields only for grouping. |
 | `HitLimitExceeded` | Result count > `max` validation. | Narrow query or increase limit. |
+| `IndexationAborted` | Indexing returned non-ok status during `Schema.apply!`. | Inspect new physical for errors; alias swap prevented. |
+| `PartitionTimeout` | Parallel pool exceeded graceful-shutdown timeout. | Check slow partitions or increase timeout. |
 
 

@@ -13,6 +13,7 @@ Operator-focused tasks for schema lifecycle and indexing. All tasks are thin fac
 rails 'search_engine:schema:diff[collection]'
 rails 'search_engine:schema:apply[collection]'
 rails 'search_engine:schema:rollback[collection]'
+rails 'search_engine:schema:prune_orphans[collection]'
 rails 'search_engine:index:rebuild[collection]'
 rails 'search_engine:index:rebuild_partition[collection,partition]'
 rails 'search_engine:index:delete_stale[collection,partition]'
@@ -28,6 +29,7 @@ rails search_engine:doctor
 - Diff schema: <code>rails 'search_engine:schema:diff[SearchEngine::Book]'</code>
 - Apply schema: <code>rails 'search_engine:schema:apply[books]'</code>
 - Rollback schema: <code>rails 'search_engine:schema:rollback[books]'</code>
+- Prune orphans: <code>rails 'search_engine:schema:prune_orphans[books]'</code> (or omit `[collection]` for all)
 - Rebuild all partitions: <code>rails 'search_engine:index:rebuild[SearchEngine::Book]'</code>
 - Rebuild a partition: <code>rails 'search_engine:index:rebuild_partition[SearchEngine::Book,42]'</code>
 - Delete stale docs: <code>rails 'search_engine:index:delete_stale[books,42]'</code>
@@ -68,6 +70,7 @@ rails 'search_engine:index:rebuild_partition[SearchEngine::Book,42]'
 - <code>schema:diff</code>: Compares compiled schema vs the active physical (via alias). Prints compact summary; <code>VERBOSE=1</code> dumps details. Exits <code>10</code> when drift exists.
 - <code>schema:apply</code>: Creates a new physical, reindexes (all partitions), swaps alias, drops old physicals per retention. Prints a compact summary.
 - <code>schema:rollback</code>: Swaps alias to previous retained physical. Exits <code>2</code> when none available.
+- <code>schema:prune_orphans</code>: Scans physical collections matching the timestamped naming pattern and drops any that are not alias targets. Optional <code>[collection]</code> scopes to one logical name; omit to scan all. Prints dropped/kept counts.
 - <code>index:rebuild</code>: If <code>partitions</code> DSL exists, enumerates and dispatches per partition; otherwise a single inline run. <code>DRY_RUN=1</code> maps only the first batch and prints a preview. Does not perform alias swaps or retention cleanup; use <code>schema:apply</code> for blue/green and retention.
 - <code>index:rebuild_partition</code>: Rebuilds a single partition; respects <code>DISPATCH</code> or config defaults.
 - <code>index:delete_stale</code>: Compiles <code>stale</code> rules (declared inside <code>index</code>) into an OR‑merged filter and deletes by filter. If no rules produce a filter: warns and exits <code>0</code>, or <code>3</code> with <code>STRICT=1</code>. <code>DRY_RUN=1</code> prints preview without deleting.
@@ -87,10 +90,22 @@ Backlinks: <a href="/projects/search-engine-for-typesense/v29/observability#open
 
 See also: <a href="/projects/search-engine-for-typesense/v29/configuration">Configuration</a> and <a href="/projects/search-engine-for-typesense/v29/observability#opentelemetry">Observability</a> for logging and OTel.
 
+## Live progress
+
+On TTY terminals, schema lifecycle and indexation tasks display animated
+progress using braille spinners and per-partition progress bars.
+Each lifecycle step (<code>Presence</code>, <code>Schema</code>,
+<code>Indexing</code>, <code>Retention</code>) shows real-time status via
+<code>StepLine</code>. Parallel partition imports render a multi-line
+<code>LiveRenderer</code> with doc-based progress percentages and
+elapsed time. On non-TTY (CI, pipes), output falls back to static
+one-line-per-event logging.
+
 ## Safety notes
 
 - Stale deletes never run with an empty filter. A short hash of the filter is printed for traceability.
 - Partition keys are opaque. Numeric strings are converted to integers; other values remain strings.
+- Failed indexation during <code>schema:apply</code> prevents the alias swap; the new physical is left for inspection. See <a href="/projects/search-engine-for-typesense/v29/schema#failed-indexation-safety">Schema → Failed indexation safety</a>.
 
 ## See also
 

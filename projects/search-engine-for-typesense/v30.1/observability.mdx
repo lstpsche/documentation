@@ -106,6 +106,42 @@ Redaction rules:
 
 For URL/cache knobs, see <a href="/projects/search-engine-for-typesense/v30.1/configuration">Configuration</a>.
 
+## Live progress (TTY)
+
+Schema lifecycle and indexation tasks provide real-time terminal
+feedback via three coordinated components:
+
+- <strong>StepLine</strong> — manages a single terminal line that can be
+  overwritten in-place. Shows an animated braille spinner while a step
+  is in progress, then finalizes with a status symbol
+  (<code>✓</code> success, <code>!</code> warning,
+  <code>-</code> skip). On non-TTY, buffers text and emits one line per
+  step completion.
+- <strong>Spinner</strong> — background-threaded braille animation
+  (<code>⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏</code>) cycling at 80 ms. Hides the
+  cursor while spinning and guarantees restore via
+  <code>CursorGuard</code>.
+- <strong>LiveRenderer</strong> — multi-line live progress for parallel
+  partition imports. Owns a vertical region of N terminal lines (one per
+  partition) and redraws changed lines on a 100 ms tick. Supports
+  doc-based progress bars with percentage display when estimates are
+  available. Viewport-aware: when partitions exceed terminal height,
+  renders a compact view with a summary header, active slots, and recent
+  completions.
+
+Non-TTY fallback: all three components degrade gracefully to static
+output — one line per completion event, preserving CI and pipe
+compatibility.
+
+These components are internal to the engine and require no user
+configuration. They activate automatically during
+<code>.index_collection</code>, <code>schema:apply</code>, and
+<code>index:rebuild</code> tasks.
+
+Operator-oriented summary:
+<a href="/projects/search-engine-for-typesense/v30.1/cli#live-progress">
+CLI → Live progress</a>.
+
 ## Logging
 
 Default behavior is quiet: no <code>[se.*]</code> lines are emitted unless enabled.

@@ -69,6 +69,11 @@ This page tracks what is currently developed (🟣), verified (debugged 🟢), a
 - 🟣 Partition planner/dispatcher (inline or ActiveJob)
 - 🟣 DX helpers (`explain`, `dry_run!`, `to_params_json`, `to_curl`)
 - 🟣 Observability (events, compact logging, optional OpenTelemetry)
+- 🟢 Live TTY progress (StepLine, Spinner, LiveRenderer with doc-based progress bars)
+- 🟢 Orphan physical collection pruning (`Schema.prune_orphans!` + rake task)
+- 🟢 Failed indexation safety (`IndexationAborted` prevents alias swap)
+- 🟢 Partition timeout detection (`PartitionTimeout` on pool timeout)
+- 🟢 Interrupt-safe pool (`InterruptiblePool` for Ctrl+C handling)
 
 ## Not yet implemented
 

@@ -129,11 +129,38 @@ flowchart LR
   W4 --> TS
 ```
 
-The queue has a capacity of <code>max_parallel * 2</code> to keep workers busy while the producer fetches more batches. Progress is logged every 10 batches when <code>log_batches</code> is enabled.
+The queue has a capacity of <code>max_parallel * 2</code> to keep workers busy while the producer fetches more batches.
+
+<strong>Interrupt handling (InterruptiblePool):</strong>
+
+Parallel imports run inside an <code>InterruptiblePool</code> wrapper that ensures clean shutdown on Ctrl+C. On normal completion, the pool drains gracefully (up to a configurable timeout). On <code>Interrupt</code>, worker threads are killed promptly (within 10 seconds) instead of waiting for the full graceful-shutdown window. This prevents stuck processes during interactive development.
+
+<strong>Partition timeout detection:</strong>
+
+When the graceful-shutdown timeout is exceeded (default: 3600 seconds), the pool kills remaining workers and raises <code>SearchEngine::Errors::PartitionTimeout</code>. The error reports which partitions were lost so operators can identify what needs re-running.
 
 <strong>Error handling:</strong>
 
 When a batch fails, the error is caught and recorded with full statistics (document count, failure details) just like in sequential processing. Failed batches are properly counted in the summary's <code>docs_total</code>, <code>failed_total</code>, and <code>batches</code> array to ensure accurate reporting.
+
+When indexation is run inside <code>Schema.apply!</code> (e.g., via <code>.index_collection</code>), a non-ok result raises <code>SearchEngine::Errors::IndexationAborted</code>, which prevents the alias swap. The partially-indexed new physical is left intact for inspection. See <a href="/projects/search-engine-for-typesense/v29/schema#failed-indexation-safety">Schema → Failed indexation safety</a>.
+
+### Live progress rendering
+
+On TTY terminals, indexation displays real-time progress using the
+<code>LiveRenderer</code>. Each partition gets a dedicated line with a
+braille spinner, a doc-based progress bar (when estimates are available),
+and elapsed time. The renderer is viewport-aware — when the number of
+partitions exceeds terminal height, it switches to a compact mode
+showing active slots and a summary header.
+
+Lifecycle steps (<code>Presence</code>, <code>Schema Status</code>,
+<code>Indexing</code>, <code>Retention</code>) use
+<code>StepLine</code> for in-place overwriting with animated spinners.
+
+On non-TTY environments (CI, pipes, redirected output), the renderer
+falls back to static one-line-per-partition completion output, preserving
+pipe compatibility.
 
 ### Memory notes
 
@@ -617,6 +644,8 @@ Reach for the Indexer when you need full rebuilds, partition orchestration, retr
 - <strong>Bulk import shape errors</strong>: Ensure each document is a flat Hash with required keys and valid types.
 - <strong>Retry exhaustion</strong>: Inspect <code>search_engine.indexer.batch_import</code> events; increase backoff or fix upstream issues.
 - <strong>Stale deletes strict block</strong>: Verify your filter is not a catch-all; use partition guards.
+- <strong>PartitionTimeout</strong>: The parallel pool exceeded its graceful-shutdown timeout. Check for slow partitions or increase <code>timeout_ms</code> in config.
+- <strong>IndexationAborted (alias not swapped)</strong>: Indexation returned a non-ok status during <code>Schema.apply!</code>. Inspect the new physical for import errors and retry. See <a href="/projects/search-engine-for-typesense/v29/schema#failed-indexation-safety">Schema → Failed indexation safety</a>.
 
 Backlinks: <a href="/projects/search-engine-for-typesense/v29/cli">CLI</a>, <a href="/projects/search-engine-for-typesense/v29/troubleshooting">Troubleshooting</a>
 

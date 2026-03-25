@@ -22,8 +22,10 @@ flowchart LR
 - <code>SearchEngine::Schema.update!(klass)</code> → attempts an in-place schema patch (Typesense <code>PATCH /collections/:name</code>) when the diff only contains field additions/drops; returns <code>true</code> when the schema is already in sync or successfully patched.
 - <code>SearchEngine::Schema.apply!(klass, force_rebuild: false)</code> → blue/green lifecycle (create new physical, reindex, swap alias, retention). By default it first tries <code>update!</code> and only falls back to blue/green when incompatible changes are detected. Returns `{ logical, new_physical, previous_physical, alias_target, dropped_physicals, action: :update|:rebuild }`.
 - <code>SearchEngine::Schema.rollback(klass)</code> → swap alias back to previous retained physical; returns `{ logical, new_target, previous_target }`.
+- <code>SearchEngine::Schema.prune_orphans!(client: nil, logical: nil)</code> → drop orphaned physical collections that no alias points to. Scoped to a single logical name when `logical:` is provided; scans all collections when `nil`. Returns `{ dropped: Array, kept: Array, total_scanned: Integer }`.
 
-Both methods are documented with YARD. Keys are returned as symbols; empty/nil values are omitted. The returned schema is deeply frozen.
+These APIs are documented with YARD. Keys are returned as symbols; empty/nil values are omitted.
+The returned schema is deeply frozen.
 
 ## In-place schema updates (Typesense v29+)
 
@@ -198,12 +200,45 @@ Typical operational pattern:
 
 <code>SearchEngine::Schema.rollback(klass)</code> will swap the alias back to the most recent retained physical (behind the current). If no previous physical exists, it raises an error (e.g., when <code>keep_last</code> is 0). No collections are deleted during rollback.
 
+### Failed indexation safety
+
+When <code>Schema.apply!</code> is used with the high-level <code>.index_collection</code> flow, the engine
+monitors indexation results. If the result status is not <code>:ok</code> (e.g., <code>:partial</code> or
+<code>:failed</code>), the block raises <code>SearchEngine::Errors::IndexationAborted</code>, which prevents the
+alias swap. The newly created physical collection is left intact for inspection.
+
+This ensures the previous (fully-indexed) physical remains active and serving queries even when a fresh reindex encounters errors.
+
+### Orphan pruning
+
+Physical collections can accumulate when blue/green deployments fail before the alias swap occurs.
+<code>Schema.prune_orphans!</code> scans all collections matching the timestamped naming pattern
+(<code>logical_YYYYMMDD_HHMMSS_###</code>) and drops any that are not the target of an alias.
+
+```ruby
+# Prune orphans for all collections
+SearchEngine::Schema.prune_orphans!
+# => { dropped: ["books_20250101_120000_001"], kept: ["books_20250315_080000_001"], total_scanned: 12 }
+
+# Scope to a single logical collection
+SearchEngine::Schema.prune_orphans!(logical: "books")
+```
+
+A rake task is also available (see <a href="/projects/search-engine-for-typesense/v30.1/cli#commands">CLI</a>):
+
+```bash
+rails 'search_engine:schema:prune_orphans'         # all collections
+rails 'search_engine:schema:prune_orphans[books]'   # scoped
+```
+
 See also: <a href="/projects/search-engine-for-typesense/v30.1/client">Client</a>, <a href="/projects/search-engine-for-typesense/v30.1/configuration">Configuration</a>, and <a href="/projects/search-engine-for-typesense/v30.1/compiler">Compiler</a>.
 
 ## Troubleshooting
 
 - <strong>Reindex step missing</strong>: Provide a block to <code>apply!</code> or implement <code>klass.reindex_all_to(name)</code>.
 - <strong>Retention errors</strong>: Ensure <code>keep_last</code> is set appropriately; rollback requires a previous retained physical.
+- <strong>Orphaned physicals accumulating</strong>: Run <code>Schema.prune_orphans!</code> or the <code>schema:prune_orphans</code> task to clean up physicals left by failed deployments.
+- <strong>Alias not swapped after apply</strong>: If indexation returned a non-ok status, <code>IndexationAborted</code> prevented the swap. Inspect the new physical and retry, or fix import errors first.
 
 Backlinks: <a href="https://github.com/lstpsche/search-engine-for-typesense#readme" target="_blank">README</a>, <a href="/projects/search-engine-for-typesense/v30.1/indexer">Indexer</a>
 
