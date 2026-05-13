@@ -1,0 +1,195 @@
+---
+title: "Geo Search"
+description: "Filter by radius or polygon, sort by distance, boost viewport results with _eval(), and access geo_distance_meters on hits."
+---
+
+Related: <a href="/projects/search-engine-for-typesense/v30/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/v30/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/v30/relation-reference">Relation Guide</a>, <a href="/projects/search-engine-for-typesense/v30/cookbook-queries">Cookbook</a>
+
+Geo search lets you filter, sort, and boost documents by geographic location using Typesense's native `geopoint` type. All geo chainers are immutable, copy-on-write, and composable with existing `where` / `order` chainers.
+
+## Schema setup
+
+Declare a `:geopoint` attribute on your model. Typesense expects the value as a `[lat, lng]` array.
+
+```ruby
+class SearchEngine::Venue < SearchEngine::Base
+  collection :venues
+  identify_by :id
+
+  attribute :name, :string
+  attribute :location, :geopoint
+  attribute :rating, :float
+end
+```
+
+For models with multiple coordinate fields, use `[:geopoint]` for an array of geopoints:
+
+```ruby
+attribute :locations, [:geopoint]
+```
+
+## where_geo — geo filtering
+
+Filter results by geographic proximity (radius) or containment (polygon). Compiles to Typesense `filter_by`.
+
+### Radius filter
+
+```ruby
+SearchEngine::Venue
+  .where_geo(:location, within_radius: { lat: 54.69, lng: 25.28, radius: "10 km" })
+  .to_a
+```
+
+- `lat` / `lng`: reference point coordinates
+- `radius`: string with unit — `"10 km"` or `"5 mi"`
+
+### Polygon filter
+
+```ruby
+SearchEngine::Venue
+  .where_geo(:location, within_polygon: [
+    [54.72, 25.35],
+    [54.72, 25.22],
+    [54.67, 25.22],
+    [54.67, 25.35]
+  ])
+  .to_a
+```
+
+- Requires 3 or more `[lat, lng]` points
+- Points define the polygon boundary; Typesense returns documents inside it
+
+### Chaining with where
+
+```ruby
+SearchEngine::Venue
+  .where(rating: 5.0)
+  .where_geo(:location, within_radius: { lat: 54.69, lng: 25.28, radius: "10 km" })
+  .to_a
+```
+
+Multiple `where` and `where_geo` calls compose with AND semantics.
+
+### Validation
+
+- Field must be declared as `:geopoint` or `[:geopoint]`
+- Coordinates are validated: lat in `[-90, 90]`, lng in `[-180, 180]`
+- Radius format must match `"<number> km"` or `"<number> mi"`
+- `within_radius:` and `within_polygon:` are mutually exclusive
+- Polygon must have at least 3 points, each as `[lat, lng]`
+
+## order_geo — distance sorting
+
+Sort results by distance from a reference point. Compiles to Typesense `sort_by` with the geopoint distance syntax.
+
+```ruby
+SearchEngine::Venue
+  .order_geo(:location, from: { lat: 54.69, lng: 25.28 })
+  .to_a
+```
+
+Default direction is `:asc` (nearest first). Use `direction: :desc` for farthest first.
+
+### Advanced options
+
+```ruby
+SearchEngine::Venue
+  .order_geo(:location,
+    from: { lat: 54.69, lng: 25.28 },
+    exclude_radius: "2 km",
+    precision: "1 km"
+  )
+```
+
+- `exclude_radius`: exclude results within this distance from distance scoring
+- `precision`: bucket precision for distance sort
+
+### Chaining with order
+
+```ruby
+SearchEngine::Venue
+  .order('rating:desc')
+  .order_geo(:location, from: { lat: 54.69, lng: 25.28 })
+```
+
+Duplicate sort fields are de-duplicated with last-wins semantics.
+
+## order_eval — conditional sort expressions
+
+Sort by a Typesense `_eval()` expression. Useful for boosting documents that match a condition (e.g., inside a map viewport polygon) without filtering them out.
+
+### Simple expression
+
+```ruby
+SearchEngine::Venue
+  .order_eval("location:(54.72,25.35, 54.72,25.22, 54.67,25.22, 54.67,25.35)")
+  .to_a
+```
+
+Compiles to: `_eval(location:(54.72,25.35, ...)):desc`
+
+Default direction is `:desc` (matching documents first).
+
+### Weighted multi-expression
+
+```ruby
+SearchEngine::Venue
+  .order_eval([
+    { expr: "location:(54.72,25.35, 54.72,25.22, 54.67,25.22, 54.67,25.35)", weight: 3 },
+    { expr: "rating:>4.5", weight: 1 }
+  ])
+```
+
+Compiles to: `_eval([ (location:(...)):3, (rating:>4.5):1 ]):desc`
+
+### Viewport boost pattern
+
+The canonical map search pattern: boost documents in the visible viewport, then sort by distance as a tiebreaker.
+
+```ruby
+SearchEngine::Venue
+  .order_eval("location:(54.72,25.35, 54.72,25.22, 54.67,25.22, 54.67,25.35)", direction: :desc)
+  .order_geo(:location, from: { lat: 54.69, lng: 25.28 })
+  .to_a
+```
+
+Documents inside the polygon rank first; within each group, nearest-first.
+
+## geo_distance_meters — distance on results
+
+When `order_geo` is used, Typesense includes distance metadata on each hit. The gem exposes this via the `geo_distance_meters` method on hydrated result objects.
+
+```ruby
+result = SearchEngine::Venue
+  .order_geo(:location, from: { lat: 54.69, lng: 25.28 })
+  .execute
+
+result.hits.each do |hit|
+  puts "#{hit.name}: #{hit.geo_distance_meters['location']}m away"
+end
+```
+
+- Returns a `Hash` mapping field name to distance in meters, e.g. `{ "location" => 1234 }`
+- Only present when the response includes `geo_distance_meters` (i.e., when a geo sort is active)
+- Works for both flat and grouped results
+
+## Full example
+
+```ruby
+SearchEngine::Venue
+  .search("coffee")
+  .where("rating:>=4.0")
+  .where_geo(:location, within_radius: { lat: 54.69, lng: 25.28, radius: "50 km" })
+  .order_eval("location:(54.72,25.35, 54.72,25.22, 54.67,25.22, 54.67,25.35)", direction: :desc)
+  .order_geo(:location, from: { lat: 54.69, lng: 25.28 })
+  .per(20)
+  .to_a
+```
+
+## Troubleshooting
+
+- **"field must be declared as :geopoint"**: ensure the attribute is declared with `:geopoint` type in your model
+- **No `geo_distance_meters` on hits**: this metadata is only present when `sort_by` includes a geopoint distance sort — use `order_geo`
+- **Invalid radius format**: use a string like `"10 km"` or `"5 mi"` — bare numbers or other units are rejected
+
+Backlinks: <a href="/projects/search-engine-for-typesense/v30/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/v30/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/v30/deferred-typesense-features">Deferred Features</a>
