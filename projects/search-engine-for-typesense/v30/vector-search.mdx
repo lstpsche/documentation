@@ -441,6 +441,7 @@ The target must be a declared embedding or float-array/vector attribute. Explici
 nonempty arrays of finite real numbers, with the declared dimension when known. Components are
 serialized as floats. `k`, `ef` and `flat_search_cutoff` must be positive integers; integer strings
 are accepted, while fractional values, NaN and infinity raise `InvalidVectorQuery`.
+Vector queries copy supplied arrays and strings before storing immutable relation state.
 
 ### `find_similar`
 

@@ -7,10 +7,13 @@ Related: <a href="/projects/search-engine-for-typesense/v30/debugging">Debugging
 
 Developer‑experience helpers on <code>Relation</code> visualize compiled requests and enable a safe, zero‑I/O dry run.
 
-- <code>Relation#to_params_json(pretty: true)</code> — redacted JSON body after compile. Pretty output has stable key ordering for copy/paste and diffs.
-- <code>Relation#to_curl</code> — single‑line cURL with POST to the resolved endpoint, JSON body, and redacted API key.
+- <code>Relation#to_params_json(pretty: true)</code> — redacted compiled parameters as JSON. Pretty output has stable key ordering for copy/paste and diffs.
+- <code>Relation#to_curl</code> — shell-quoted GET cURL with URL-encoded search/cache parameters and a redacted API key.
 - <code>Relation#dry_run!</code> — compiles and validates without network I/O; returns `{ url:, body:, url_opts: }`.
 - <code>Relation#explain</code> — extended overview with grouping, joins, presets/curation, conflicts, correlation ID preview (when present), and predicted events.
+
+`dry_run![:body]` is a JSON parameter preview. Live single searches send those parameters in the GET
+URL. cURL previews quote each argument for the shell and include request-level cache controls.
 
 ## Helpers & examples
 
@@ -25,7 +28,7 @@ rel.to_params_json
 # => "{\n  \"filter_by\": \"active:=***\", ... }"
 
 rel.to_curl
-# => "curl -X POST https://host/... -H 'Content-Type: application/json' -H 'X-TYPESENSE-API-KEY: ***' -d '{...}'"
+# => "curl --get https://host/... -H X-TYPESENSE-API-KEY:\\ \\*\\*\\* --data-urlencode q=... ..."
 
 rel.dry_run!
 # => { url: "https://host:8108/collections/products/documents/search", body: "{...}", url_opts: { use_cache: true, cache_ttl: 60 } }
