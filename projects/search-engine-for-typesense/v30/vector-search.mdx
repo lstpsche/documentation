@@ -305,19 +305,15 @@ similarity or hybrid query without generating another embedding, including for e
 When supplied by Typesense, the exact backend distance is available on hydrated hits:
 
 ```ruby
-result = SearchEngine::Product.search('chair').vector_search(:product_embedding)
-  .options(rerank_hybrid_matches: true).execute
-result.hits.each { |hit| puts hit.vector_distance }
+result = SearchEngine::Product.search('chair').vector_search(:product_embedding).execute
+result.hits.each { |hit| puts hit.vector_distance if hit.respond_to?(:vector_distance) }
 ```
 
 This metadata works for flat, grouped and multi-search results, and preserves zero. When absent,
 the gem does not invent a distance or a normalized score. The metadata reader takes precedence over
 a same-named document reader; the original document stays available in `result.raw`.
-
-Hybrid keyword-only hits may omit vector distance by default. Set
-`.options(rerank_hybrid_matches: true)` when every hybrid hit needs backend distance metadata. This
-asks Typesense to compute both scores for all matches and adds server computation; the gem does not
-fabricate missing distances.
+Hybrid hits and exact auto-embedding matches can omit this metadata. Check the reader's presence
+before using it; the gem preserves the backend response instead of inventing a distance.
 
 ## Distance threshold
 
