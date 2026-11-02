@@ -10,8 +10,11 @@ Related: <a href="/projects/search-engine-for-typesense/v30/quickstart">Quicksta
 Add the gem to your host app:
 
 ```ruby
-gem "search-engine-for-typesense"
+gem "search-engine-for-typesense", "~> 30.9"
 ```
+
+Gem versions follow `{typesense_major}.{gem_minor}.{gem_patch}`. Gem `30.9.0` targets Typesense 30.x
+and is tested against 30.2. Gem minor/patch releases are independent of Typesense minor releases.
 
 Create an initializer `config/initializers/search_engine.rb`:
 
@@ -42,8 +45,8 @@ See <a href="/projects/search-engine-for-typesense/v30/configuration">Configurat
 ## Requirements
 
 - Ruby >= 3.1, Rails >= 6.1
-- Dependency: `typesense >= 4.1.0` (pulled automatically, but may conflict with `base64` gem — requires v0.2.0)
-- A running Typesense server reachable at `host:port` over `protocol` with a valid API key
+- Dependency: `typesense >= 5.0.0` (installed automatically; this is the Ruby SDK version)
+- A Typesense 30.x server reachable at `host:port` over `protocol` with a valid API key; 30.2 is the tested baseline
 
 ## Environment variables
 

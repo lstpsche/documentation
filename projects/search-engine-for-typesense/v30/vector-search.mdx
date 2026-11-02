@@ -207,6 +207,18 @@ SearchEngine::Product
 Start with `alpha: 0.7` and tune based on your dataset. Higher alpha favours semantic similarity; lower alpha favours exact keyword matches.
 </Tip>
 
+For an externally generated embedding, combine the text query with an explicit vector. The gem
+preserves `alpha` without adding the external field to `query_by` or asking Typesense to embed it:
+
+```ruby
+SearchEngine::Product.search('chair')
+  .vector_search(:custom_embedding, query: [0.2, 0.4, 0.1], alpha: 0.8, k: 20)
+```
+
+This example assumes `custom_embedding` is declared with `num_dim: 3`. With auto-embedding,
+the compiler appends the embedding field to `query_by` once. An explicit distance sort orders by
+distance rather than the default blended relevance ranking.
+
 ## Find similar documents
 
 `find_similar` is sugar over `vector_search` with `id:`. Typesense retrieves the stored embedding for the given document and finds its nearest neighbors.
@@ -231,6 +243,10 @@ SearchEngine::Product
   .where.not(id: "product-42")
 ```
 
+IDs are converted with `to_s`. Commas, colons, parentheses, control characters, blank IDs and
+surrounding whitespace cannot round-trip through the scalar vector-query grammar and raise
+`InvalidVectorQuery`. Spaces inside IDs, brackets and backticks are supported.
+
 ## Historical queries
 
 Weight multiple past queries and let Typesense blend their embeddings server-side.
@@ -244,8 +260,16 @@ SearchEngine::Product
 ```
 
 <Note>
-`weights:` must sum to approximately 1.0 (tolerance: 0.01). The gem validates this and raises `InvalidVectorQuery` if violated.
+The gem validates `weights:` using `config.embedding.weights_sum_tolerance` (default `0.01`).
+Typesense 30.1 and 30.2 enforce a sum of 1.0 more strictly: for example, `[0.5, 0.495]` passes
+the wrapper's default tolerance but the server rejects it. That failure propagates as `Errors::Api`;
+the gem does not rescale weights. Prefer weights such as `[0.5, 0.5]` that sum to 1.0.
 </Note>
+
+Each historical string is backtick-delimited in `vector_query`, preserving commas, parentheses
+and brackets. Colons, literal backticks, control characters, blank strings and surrounding whitespace
+are rejected before HTTP execution because they cannot be represented losslessly. Historical queries
+require a field configured for server-side auto-embedding.
 
 ## External vector queries
 
@@ -254,7 +278,7 @@ When you generate embeddings in your own pipeline, pass the float array directly
 ```ruby
 SearchEngine::Product
   .vector_search(:custom_embedding,
-    query: [0.2, 0.4, 0.1, 0.8, ...],
+    query: [0.2, 0.4, 0.1], # Assumes num_dim: 3
     k: 100)
 ```
 
@@ -262,7 +286,7 @@ This bypasses Typesense's auto-embedding; the provided vector is used as-is for 
 
 ## Sort by vector distance
 
-Use `order(vector_distance: :asc)` as a secondary sort to rank keyword results by their semantic proximity.
+Use `order(vector_distance: :asc)` to order matches by the distance of the active vector query.
 
 ```ruby
 SearchEngine::Product
@@ -271,11 +295,23 @@ SearchEngine::Product
   .order(vector_distance: :asc)
 ```
 
-The compiler resolves `vector_distance` to the Typesense token `_vector_query(product_embedding:([])):asc`.
+The compiler resolves `vector_distance` to `_vector_distance:asc`. This uses the active vector,
+similarity or hybrid query without generating another embedding, including for external vectors.
 
 <Warning>
 `order(vector_distance: ...)` requires `.vector_search` to be chained on the same relation. Using it without vector search raises `InvalidVectorQuery`.
 </Warning>
+
+When supplied by Typesense, the exact backend distance is available on hydrated hits:
+
+```ruby
+result = SearchEngine::Product.search('chair').vector_search(:product_embedding).execute
+result.hits.each { |hit| puts hit.vector_distance }
+```
+
+This metadata works for flat, grouped and multi-search results, and preserves zero. When absent,
+the gem does not invent a distance or a normalized score. The metadata reader takes precedence over
+a same-named document reader; the original document stays available in `result.raw`.
 
 ## Distance threshold
 
@@ -400,6 +436,12 @@ def vector_search(field = nil, k: nil, alpha: nil, query: nil, id: nil,
 
 Mutually exclusive modes: `query:`, `id:`, and `queries:`. Providing more than one raises `InvalidVectorQuery`. Last `vector_search` call wins (Typesense supports one `vector_query` per search).
 
+These methods work directly on model classes and on relations. They remain lazy until materialized.
+The target must be a declared embedding or float-array/vector attribute. Explicit vectors must be
+nonempty arrays of finite real numbers, with the declared dimension when known. Components are
+serialized as floats. `k`, `ef` and `flat_search_cutoff` must be positive integers; integer strings
+are accepted, while fractional values, NaN and infinity raise `InvalidVectorQuery`.
+
 ### `find_similar`
 
 ```ruby
@@ -422,9 +464,20 @@ The compiler emits a `search_engine.vector.compile` event with:
 | `hybrid_weight` | Alpha value |
 | `ann_params_present` | Whether `ef` or `flat_search_cutoff` was set |
 
-Compact logging redacts raw vector arrays. OTel spans include these attributes when enabled.
+With the default vector redaction enabled, numeric arrays are replaced with dimension counts,
+including scientific notation, signed numbers and whitespace. Unrecognized sensitive arrays are
+masked. Historical strings and weights retain their existing logging policy. Set
+`config.observability.redact_vectors = false` only when intentionally exposing numeric vectors.
+OTel spans include compile summary attributes when enabled.
 
 See <a href="/projects/search-engine-for-typesense/v30/observability">Observability</a> for event payloads and log format.
+
+Gem `30.9.0` targets Typesense 30.x and is tested against 30.2. Geo/vector behavior, external hybrid
+alpha, distance sorting, built-in auto-embedding and historical queries are qualified against that server release. The earlier
+30.1 checks exposed a scoped-cache isolation defect; upgrade before using scoped-key caching.
+The repository's `examples/demo_shop/bin/query_smoke` compiles without
+a database or server; `--live --auto-embedding` executes the model-backed examples on an explicitly
+configured disposable loopback server. See the repository's demo README for endpoint variables.
 
 ## Backlinks
 

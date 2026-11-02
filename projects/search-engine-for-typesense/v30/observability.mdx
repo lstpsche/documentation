@@ -81,6 +81,12 @@ Redaction rules:
 - <code>q</code> is truncated when longer than 128 chars
 - <code>filter_by</code> literals are masked while preserving structure (e.g., <code>price:>10</code> → <code>price:>***</code>)
 - <code>filter_by</code> is never logged as-is; a <code>filter_hash</code> (sha1) is provided instead for stale deletes
+- Numeric arrays in <code>vector_query</code> are replaced by dimension counts when
+  <code>config.observability.redact_vectors</code> is enabled (the default), including scientific
+  notation, signs and whitespace. Malformed or unrecognized vector arrays are masked rather than
+  logged verbatim. Scalars such as <code>k</code> and <code>alpha</code> remain visible.
+- Historical query strings and query weights retain their existing logging policy. Setting
+  <code>config.observability.redact_vectors = false</code> explicitly permits raw numeric vectors.
 
 | Key            | Type                 | Redaction |
 |----------------|----------------------|-----------|

@@ -7,6 +7,11 @@ Related: <a href="/projects/search-engine-for-typesense/v30/relation">Relation</
 
 Geo search lets you filter, sort, and boost documents by geographic location using Typesense's native `geopoint` type. All geo chainers are immutable, copy-on-write, and composable with existing `where` / `order` chainers.
 
+`where_geo`, `order_geo` and `order_eval` work directly on model classes and on relations. Building
+a query makes no HTTP request. Gem `30.9.0` targets Typesense 30.x and is tested against 30.2.
+Radius/polygon filters, conditional viewport ranking, distance ordering and hit metadata are qualified
+against that server release.
+
 ## Schema setup
 
 Declare a `:geopoint` attribute on your model. Typesense expects the value as a `[lat, lng]` array.
@@ -155,6 +160,9 @@ SearchEngine::Venue
 
 Documents inside the polygon rank first; within each group, nearest-first.
 
+This ranks documents outside the viewport after those inside it. Add `where_geo` when outside
+documents must be excluded; ordering alone does not constrain the result set.
+
 ## geo_distance_meters — distance on results
 
 When `order_geo` is used, Typesense includes distance metadata on each hit. The gem exposes this via the `geo_distance_meters` method on hydrated result objects.
@@ -191,5 +199,15 @@ SearchEngine::Venue
 - **"field must be declared as :geopoint"**: ensure the attribute is declared with `:geopoint` type in your model
 - **No `geo_distance_meters` on hits**: this metadata is only present when `sort_by` includes a geopoint distance sort — use `order_geo`
 - **Invalid radius format**: use a string like `"10 km"` or `"5 mi"` — bare numbers or other units are rejected
+
+The gem repository includes a database-free CLI example:
+
+```bash
+bundle exec ruby examples/demo_shop/bin/query_smoke
+```
+
+This compiles radius/polygon, viewport/distance, vector and highlighting requests and checks explicit
+metadata fixtures. Follow the demo README to opt into `--live` against a disposable loopback server;
+the script owns and cleans up unique collections. Compilation alone does not prove live results.
 
 Backlinks: <a href="/projects/search-engine-for-typesense/v30/relation">Relation</a>, <a href="/projects/search-engine-for-typesense/v30/schema">Schema</a>, <a href="/projects/search-engine-for-typesense/v30/deferred-typesense-features">Deferred Features</a>
